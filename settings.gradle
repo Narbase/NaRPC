@@ -1,0 +1,4 @@
+rootProject.name = 'NaRPC'
+include 'narpc-client', 'narpc-server-jvm'
+
+enableFeaturePreview('GRADLE_METADATA')
