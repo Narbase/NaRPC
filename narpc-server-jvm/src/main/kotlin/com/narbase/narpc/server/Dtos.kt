@@ -16,4 +16,3 @@ data class NarpcResponseDto(
     val message: String? = null
 )
 
-class FileContainer(val file: File)

@@ -2,6 +2,7 @@ package com.narbase.narpc.server
 
 import com.google.gson.Gson
 import com.google.gson.JsonElement
+import narpc.dto.FileContainer
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
@@ -27,6 +28,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
     fun process(files: List<FileDescriptor>, requestDto: NarpcServerRequestDto): NarpcResponseDto {
 
         val method = getMethod(requestDto.functionName)
+        println("NarpcServer::process: received files are ${files.mapNotNull { it.originalName }.joinToString()}")
 
         val firstArgument = (method.genericParameterTypes.first() as? ParameterizedType)
         val firstArgumentIsFileList = firstArgument?.rawType == List::class.java && firstArgument.actualTypeArguments.first() == FileContainer::class.java
@@ -55,6 +57,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
                 gson.fromJson((arg as JsonElement), type)
             }
         }.toTypedArray()
+        println("NarpcServer::process: results are ${results.joinToString()}")
         val result = method.invoke(service, *results)
         return NarpcResponseDto(result?.let { gson.toJsonTree(result) })
 
