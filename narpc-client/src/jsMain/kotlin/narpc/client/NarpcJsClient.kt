@@ -22,7 +22,7 @@ import kotlin.js.json
 
 object NarpcJsClient {
 
-    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>): NarpcResponseDto {
+    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>, headers: Map<String, String>): NarpcResponseDto {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
@@ -33,6 +33,7 @@ object NarpcJsClient {
         try {
             return synchronousPost(
                 endpoint,
+                headers = headers,
 //                    headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),
                 body = dto
             )
@@ -41,7 +42,12 @@ object NarpcJsClient {
         }
     }
 
-    suspend fun sendMultipartRequest(endpoint: String, methodName: String, args: Array<Any>): NarpcResponseDto {
+    suspend fun sendMultipartRequest(
+        endpoint: String,
+        methodName: String,
+        args: Array<Any>,
+        headers: Map<String, String>
+    ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(methodName, args.filterNot {
             it is FileContainer ||
                     (it is Collection<*> && it.isNotEmpty() && it.first() is FileContainer) ||
@@ -66,6 +72,7 @@ object NarpcJsClient {
 
         return synchronousPost(
             url = endpoint,
+            headers = headers,
 //                headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),//Todo: why was this commented out?
             body = formData,
             stringify = false,

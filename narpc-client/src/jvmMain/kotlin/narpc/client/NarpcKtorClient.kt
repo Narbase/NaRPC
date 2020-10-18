@@ -28,6 +28,7 @@ import narpc.dto.NarpcClientRequestDto
  */
 
 object NarpcKtorClient {
+
     private val client by lazy {
         HttpClient(Apache) {
 /*
@@ -47,12 +48,17 @@ object NarpcKtorClient {
         }
     }
 
-    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>): String {
+    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>, globalHeaders: Map<String, String>): String {
 
         val dto = NarpcClientRequestDto(methodName, args)
         println("requestDto = $dto")
         try {
             val response: String = client.post(endpoint) {
+                headers {
+                    globalHeaders.forEach {
+                        append(it.key, it.value)
+                    }
+                }
                 contentType(ContentType("application", "json"))
                 body = dto
             }
@@ -65,11 +71,14 @@ object NarpcKtorClient {
         }
     }
 
-    suspend fun sendMultipartRequest(endpoint: String, methodName: String, args: Array<Any>): String {
+    suspend fun sendMultipartRequest(endpoint: String, methodName: String, args: Array<Any>, globalHeaders: Map<String, String>): String {
         val dto = NarpcClientRequestDto(methodName, args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
                 .toTypedArray())
         return client.post(endpoint) {
             headers {
+                globalHeaders.forEach {
+                    append(it.key, it.value)
+                }
                 //                append("Authorization", "XXXX")
                 append("Accept", ContentType.Application.Json)
             }

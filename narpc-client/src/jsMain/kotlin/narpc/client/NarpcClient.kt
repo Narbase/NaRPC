@@ -8,7 +8,7 @@ import utils.json
 import kotlin.js.Promise
 
 actual object NarpcClient {
-    actual inline fun <reified T : Any> build(endpoint: String): T {
+    actual inline fun <reified T : Any> build(endpoint: String, headers: Map<String, String>): T {
         val p = Promise<Int> { resolve, reject ->
 
         }
@@ -36,7 +36,7 @@ actual object NarpcClient {
                     val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Any = { target, thisArgs, args ->
 
                         val p = GlobalScope.async {
-                            makeCall(endpoint, prop, args)
+                            makeCall(endpoint, prop, args, headers)
                         }
                         p
 
@@ -60,16 +60,16 @@ actual object NarpcClient {
     }
 
 
-    suspend fun makeCall(endpoint: String, methodName: String, args: Array<Any>): Any {
+    suspend fun makeCall(endpoint: String, methodName: String, args: Array<Any>, headers: Map<String, String>): Any {
         try {
             val firstArgumentIsFile = args.firstOrNull() is FileContainer
             val firstArgumentIsFileArray = (args.firstOrNull() as? Array<*>)?.firstOrNull() is FileContainer
             val firstArgumentIsFileCollection = (args.firstOrNull() as? Collection<*>)?.firstOrNull() is FileContainer
             val nrpcResponse = if (firstArgumentIsFile || firstArgumentIsFileArray || firstArgumentIsFileCollection) {
 
-                NarpcJsClient.sendMultipartRequest(endpoint, methodName, args)
+                NarpcJsClient.sendMultipartRequest(endpoint, methodName, args, headers)
             } else {
-                NarpcJsClient.sendRequest(endpoint, methodName, args)
+                NarpcJsClient.sendRequest(endpoint, methodName, args, headers)
             }
 
             val dto = nrpcResponse.dto
