@@ -1,7 +1,6 @@
 package narpc.client
 
 import kotlinx.coroutines.await
-import narpc.ServerCaller
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
@@ -121,7 +120,7 @@ object NarpcJsClient {
         val headersJson = json(*headersPairs.toTypedArray())
 
         val httpResponse = window.fetch(
-            "${ServerCaller.BASE_URL}$url", RequestInit(
+            url, RequestInit(
                 method = requestVerb,
                 headers = headersJson,
                 body = bodyToSend
