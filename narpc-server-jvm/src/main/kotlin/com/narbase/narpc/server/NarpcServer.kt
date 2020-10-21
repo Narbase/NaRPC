@@ -3,6 +3,8 @@ package com.narbase.narpc.server
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import narpc.dto.FileContainer
+import narpc.exceptions.NarpcBaseException
+import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
@@ -21,8 +23,19 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             val type = typesList[index]
             gson.fromJson(any, type)
         }.toTypedArray()
-        val result = method.invoke(service, *results)
-        return NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+
+        return try {
+            val result = method.invoke(service, *results)
+            NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+        } catch (e: NarpcBaseException) {
+            NarpcResponseDto(null, status = e.status, message = e.message)
+        } catch (t: InvocationTargetException) {
+            val targetException = t.targetException
+            if (targetException is NarpcBaseException) {
+                NarpcResponseDto(null, status = targetException.status, message = targetException.message)
+            } else throw t
+        }
+
     }
 
     fun process(files: List<FileDescriptor>, requestDto: NarpcServerRequestDto): NarpcResponseDto {
@@ -31,7 +44,8 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         println("NarpcServer::process: received files are ${files.mapNotNull { it.originalName }.joinToString()}")
 
         val firstArgument = (method.genericParameterTypes.first() as? ParameterizedType)
-        val firstArgumentIsFileList = firstArgument?.rawType == List::class.java && firstArgument.actualTypeArguments.first() == FileContainer::class.java
+        val firstArgumentIsFileList =
+            firstArgument?.rawType == List::class.java && firstArgument.actualTypeArguments.first() == FileContainer::class.java
 
         val args = (if (firstArgumentIsFileList) listOf(files) else files) + requestDto.args
         val results = args.mapIndexed { index, arg ->
@@ -47,7 +61,9 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
                         fileItem as FileDescriptor
 
                         val file = Files.createTempFile(fileItem.originalName, null).toFile()
-                        fileItem.stream.use { input -> file.outputStream().buffered().use { output -> input.copyTo(output) } }
+                        fileItem.stream.use { input ->
+                            file.outputStream().buffered().use { output -> input.copyTo(output) }
+                        }
                         FileContainer(file)
                     }
                 } else {//This case shouldn't happen in the current schema because all the other arguments should be wrapped within a dto
@@ -58,8 +74,12 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             }
         }.toTypedArray()
         println("NarpcServer::process: results are ${results.joinToString()}")
-        val result = method.invoke(service, *results)
-        return NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+        return try {
+            val result = method.invoke(service, *results)
+            NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+        } catch (e: NarpcBaseException) {
+            NarpcResponseDto(null, status = e.status, message = e.message)
+        }
 
     }
 

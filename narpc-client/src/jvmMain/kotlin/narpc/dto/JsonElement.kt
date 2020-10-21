@@ -7,7 +7,7 @@ actual class NarpcResponseDto(
 
     val status: String = "0",
 
-    message: String? = null
+    val message: String = ""
 )
 
 actual class NarpcServerRequestDto(val functionName: String, val args: List<JsonElement>)

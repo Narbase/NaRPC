@@ -4,6 +4,8 @@ import com.narbase.narpc.server.InjectApplicationCall
 import io.ktor.application.*
 import jvm_library_test.e2e.TestServer
 import narpc.dto.FileContainer
+import narpc.exceptions.NarpcBaseException
+import narpc.exceptions.UnknownErrorException
 import java.io.File
 import kotlin.random.Random
 
@@ -28,6 +30,8 @@ object NarpcTestUtils {
         suspend fun wrappedHello(greeting: Greeting): Greeting
         suspend fun sendFile(file: FileContainer): Boolean
         suspend fun sendFiles(files: List<FileContainer>, firstNumber: Int, secondNumber: Int): Int
+        suspend fun throwUnknownErrorException()
+        suspend fun throwCustomException(exceptionCode: Int)
         data class Greeting(val greeting: String, val recepientIds: List<Int>)
         data class SimpleTestItem(val name: String, val numbersList: List<Int>)
     }
@@ -97,6 +101,15 @@ object NarpcTestUtils {
                 println(e.stackTrace)
                 return Random(134).nextInt()
             }
+        }
+
+        override suspend fun throwUnknownErrorException() {
+            throw  UnknownErrorException("this method throws UnknownErrorException")
+        }
+
+        override suspend fun throwCustomException(exceptionCode: Int) {
+            class MyCustomException(message: String): NarpcBaseException("$exceptionCode", message)
+            throw MyCustomException("throwing custom exception")
         }
     }
 

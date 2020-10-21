@@ -4,7 +4,9 @@ import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
+import narpc.exceptions.NarpcBaseException
 import narpc.exceptions.ServerException
+import narpc.exceptions.UnknownErrorException
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
@@ -141,6 +143,30 @@ internal class NarpcTests {
                     client.doSomething(2)
                 } catch (e: ServerException) {
                     assertTrue { e.httpStatus == 404 }
+                    throw e
+                }
+            }
+        }
+    }
+
+    @Test
+    fun unknownErrorException_shouldBeReceived_whenItIsThrownServerSide(){
+        runBlocking {
+            assertFailsWith(UnknownErrorException::class){
+                service.throwUnknownErrorException()
+            }
+        }
+    }
+
+    @Test
+    fun theErrorCodeUsedInCustomException_shouldBeReceived_whenItIsThrownServerSide(){
+        runBlocking {
+            assertFailsWith(NarpcBaseException::class){
+                val exceptionStatus = 2
+                try {
+                    service.throwCustomException(exceptionStatus)
+                }catch (e: NarpcBaseException){
+                    assertTrue { e.status.toIntOrNull() == exceptionStatus }
                     throw e
                 }
             }

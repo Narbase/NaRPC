@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
 import narpc.dto.FileContainer
 import narpc.dto.NarpcResponseDto
+import narpc.exceptions.*
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
@@ -51,6 +52,14 @@ class NarpcProxyListener<T : Any>(
 
         val gson = Gson()
         val nrpcResponse = gson.fromJson(jsonValue, NarpcResponseDto::class.java)
+        if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS){
+            when(nrpcResponse.status){
+                CommonCodes.UNKNOWN_ERROR-> throw UnknownErrorException(nrpcResponse.message)
+                CommonCodes.INVALID_REQUEST-> throw InvalidRequestException(nrpcResponse.message)
+                CommonCodes.UNAUTHENTICATED-> throw UnauthenticatedException(nrpcResponse.message)
+                else -> throw NarpcBaseException(nrpcResponse.status, nrpcResponse.message)
+            }
+        }
         val dto = nrpcResponse.dto
         println("before desirialization: dto = $dto")
         if (dto != null) {
