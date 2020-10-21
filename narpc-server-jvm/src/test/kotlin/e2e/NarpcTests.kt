@@ -1,26 +1,26 @@
-package com.narbase.narnic.main.rpc
+package e2e
 
-import e2e.NrpcTestUtils
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
+import narpc.exceptions.ServerException
 import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import java.nio.file.Files
 import kotlin.random.Random
-import kotlin.test.assertFails
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 internal class NarpcTests {
-    private val service: NrpcTestUtils.TestService = NarpcClient.build(
+    val service: NrpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer ${getToken("test_user")}"
         )
     )
-    private val unauthenticatedService: NrpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
+    val unauthenticatedService: NrpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     companion object {
         @BeforeClass
@@ -33,16 +33,6 @@ internal class NarpcTests {
     @Before
     fun setup() {
         NrpcTestUtils.deleteAllTestFiles()
-    }
-
-    @Test
-    fun unauthenticatedService_shouldGet_whenHelloIsSent() {
-        runBlocking {
-            val greeting = "Hello"
-            assertFails {
-                unauthenticatedService.hello(greeting)
-            }
-        }
     }
 
     @Test
@@ -108,6 +98,41 @@ internal class NarpcTests {
             val response = service.sendFiles(testFiles, firstNumber, secondNumber)
             assertTrue {
                 response == (firstNumber - secondNumber)
+            }
+        }
+    }
+
+    @Test
+    fun unauthenticatedService_shouldGet401ServerException_whenHelloIsSent() {
+        runBlocking {
+            val greeting = "Hello"
+            assertFailsWith(ServerException::class) {
+                try {
+                    unauthenticatedService.hello(greeting)
+                } catch (e: ServerException) {
+                    assertTrue { e.httpStatus == 401 }
+                    throw e
+                }
+            }
+        }
+    }
+
+    private interface PointlessInterface {
+        fun doSomething(i : Int)
+    }
+
+    @Test
+    fun unhandledServiceServerSide_shouldGet404ServerException_whenAnyOfItsFunctionsAreCalled() {
+        runBlocking {
+            assertFailsWith(ServerException::class) {
+                try {
+
+                    val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
+                    client.doSomething(2)
+                } catch (e: ServerException) {
+                    assertTrue { e.httpStatus == 404 }
+                    throw e
+                }
             }
         }
     }

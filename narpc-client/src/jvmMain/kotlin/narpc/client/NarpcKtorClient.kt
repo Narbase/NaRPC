@@ -3,6 +3,7 @@ package narpc.client
 import com.google.gson.Gson
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.apache.Apache
+import io.ktor.client.features.*
 import io.ktor.client.features.json.GsonSerializer
 import io.ktor.client.features.json.JsonFeature
 import io.ktor.client.request.forms.FormBuilder
@@ -17,6 +18,7 @@ import io.ktor.utils.io.core.writeFully
 import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
+import narpc.exceptions.ServerException
 
 /*
  * NARBASE TECHNOLOGIES CONFIDENTIAL
@@ -48,7 +50,12 @@ object NarpcKtorClient {
         }
     }
 
-    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>, globalHeaders: Map<String, String>): String {
+    suspend fun sendRequest(
+        endpoint: String,
+        methodName: String,
+        args: Array<Any>,
+        globalHeaders: Map<String, String>
+    ): String {
 
         val dto = NarpcClientRequestDto(methodName, args)
         println("requestDto = $dto")
@@ -67,22 +74,34 @@ object NarpcKtorClient {
 
         } catch (t: Throwable) {
             t.printStackTrace()
-            throw t
+            if (t is ResponseException) {
+                throw ServerException(t.response.status.value, t.response.status.description, t.localizedMessage)
+            } else {
+                throw t
+            }
         }
     }
 
-    suspend fun sendMultipartRequest(endpoint: String, methodName: String, args: Array<Any>, globalHeaders: Map<String, String>): String {
-        val dto = NarpcClientRequestDto(methodName, args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
+    suspend fun sendMultipartRequest(
+        endpoint: String,
+        methodName: String,
+        args: Array<Any>,
+        globalHeaders: Map<String, String>
+    ): String {
+        val dto = NarpcClientRequestDto(
+            methodName,
+            args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
                 .toTypedArray())
-        return client.post(endpoint) {
-            headers {
-                globalHeaders.forEach {
-                    append(it.key, it.value)
+        try {
+            val response: String = client.post(endpoint) {
+                headers {
+                    globalHeaders.forEach {
+                        append(it.key, it.value)
+                    }
+                    //                append("Authorization", "XXXX")
+                    append("Accept", ContentType.Application.Json)
                 }
-                //                append("Authorization", "XXXX")
-                append("Accept", ContentType.Application.Json)
-            }
-            body = MultiPartFormDataContent(
+                body = MultiPartFormDataContent(
                     formData {
                         args.forEach { arg ->
                             if (arg is FileContainer) {
@@ -98,18 +117,30 @@ object NarpcKtorClient {
                         }
                         this.append(FormPart("nrpcDto", Gson().toJson(dto)))
                     }
-            )
+                )
+            }
+            return response
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            if (t is ResponseException) {
+                throw ServerException(t.response.status.value, t.response.status.description, t.localizedMessage)
+            } else {
+                throw t
+            }
+
         }
     }
 
     private fun FormBuilder.appendFile(it: File) {
         appendInput(
-                it.name,
-                headers = Headers.build {
-                    append(HttpHeaders.ContentDisposition,
-                            "filename=${it.name}")
-                },
-                size = it.length()
+            it.name,
+            headers = Headers.build {
+                append(
+                    HttpHeaders.ContentDisposition,
+                    "filename=${it.name}"
+                )
+            },
+            size = it.length()
         ) {
             buildPacket { writeFully(it.readBytes()) }
         }
