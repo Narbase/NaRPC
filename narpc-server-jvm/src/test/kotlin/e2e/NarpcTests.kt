@@ -1,5 +1,7 @@
 package com.narbase.narnic.main.rpc
 
+import e2e.NrpcTestUtils
+import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
@@ -8,10 +10,17 @@ import org.junit.BeforeClass
 import org.junit.Test
 import java.nio.file.Files
 import kotlin.random.Random
+import kotlin.test.assertFails
 import kotlin.test.assertTrue
 
 internal class NarpcTests {
-    val service: NrpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
+    private val service: NrpcTestUtils.TestService = NarpcClient.build(
+        "http://localhost:8010/test",
+        headers = mapOf(
+            "Authorization" to "Bearer ${getToken("test_user")}"
+        )
+    )
+    private val unauthenticatedService: NrpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     companion object {
         @BeforeClass
@@ -24,6 +33,16 @@ internal class NarpcTests {
     @Before
     fun setup() {
         NrpcTestUtils.deleteAllTestFiles()
+    }
+
+    @Test
+    fun unauthenticatedService_shouldGet_whenHelloIsSent() {
+        runBlocking {
+            val greeting = "Hello"
+            assertFails {
+                unauthenticatedService.hello(greeting)
+            }
+        }
     }
 
     @Test

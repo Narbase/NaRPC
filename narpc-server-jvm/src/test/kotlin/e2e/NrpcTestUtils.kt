@@ -1,45 +1,17 @@
-package com.narbase.narnic.main.rpc
+package e2e
 
 import com.narbase.narpc.server.InjectApplicationCall
-import com.narbase.narpc.server.NarpcKtorHandler
-import com.narbase.narpc.server.NarpcServer
 import io.ktor.application.*
-import io.ktor.features.*
-import io.ktor.gson.*
-import io.ktor.routing.*
-import io.ktor.server.engine.*
-import io.ktor.server.netty.*
+import jvm_library_test.e2e.TestServer
 import narpc.dto.FileContainer
-import org.slf4j.event.Level
 import java.io.File
 import kotlin.random.Random
 
 object NrpcTestUtils {
     fun runServer() {
-        println("run server called")
-        embeddedServer(Netty, port = 8010, module = { testModule() }).apply { start(false) }
-        println("run server ended")
+        TestServer.run()
     }
 
-    private fun Application.testModule() {
-        install(ContentNegotiation) {
-            gson {
-                setPrettyPrinting()
-            }
-
-        }
-        install(CallLogging) {
-            level = Level.INFO
-        }
-
-
-        routing {
-
-            post("/test") {
-                NarpcKtorHandler(NarpcServer(RemoteTestService())).handle(call)
-            }
-        }
-    }
 
 
     fun deleteAllTestFiles() {
@@ -126,3 +98,5 @@ object NrpcTestUtils {
 
     fun greetingResponse(greeting: String) = "$greeting to you too"
 }
+
+
