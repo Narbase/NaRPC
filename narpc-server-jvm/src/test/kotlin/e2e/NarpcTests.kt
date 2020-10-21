@@ -14,25 +14,35 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 internal class NarpcTests {
-    val service: NrpcTestUtils.TestService = NarpcClient.build(
+    val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer ${getToken("test_user")}"
         )
     )
-    val unauthenticatedService: NrpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
+    val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     companion object {
         @BeforeClass
         @JvmStatic
         fun setupAll() {
-            NrpcTestUtils.runServer()
+            NarpcTestUtils.runServer()
         }
     }
 
     @Before
     fun setup() {
-        NrpcTestUtils.deleteAllTestFiles()
+        NarpcTestUtils.deleteAllTestFiles()
+    }
+
+    @Test
+    fun emptyResponse_shouldBeReceived_whenCallReturnValueIsUnit() {
+        runBlocking {
+            val response = service.empty()
+            assertTrue {
+                response == Unit
+            }
+        }
     }
 
     @Test
@@ -41,15 +51,15 @@ internal class NarpcTests {
             val greeting = "Hello"
             val response = service.hello(greeting)
             assertTrue {
-                response == NrpcTestUtils.greetingResponse(greeting)
+                response == NarpcTestUtils.greetingResponse(greeting)
             }
         }
     }
 
     @Test
-    fun nrpc_shouldSupport_sendingAndReceivingComplexItems() {
+    fun narpc_shouldSupport_sendingAndReceivingComplexItems() {
         runBlocking {
-            val greeting = NrpcTestUtils.TestService.Greeting("Hello", listOf(1, 3))
+            val greeting = NarpcTestUtils.TestService.Greeting("Hello", listOf(1, 3))
             val response = service.wrappedHello(greeting)
             assertTrue {
                 response.equals(greeting)
@@ -58,12 +68,12 @@ internal class NarpcTests {
     }
 
     @Test
-    fun nrpc_shouldSupport_sendingAndReceivingListsOfItems() {
+    fun narpc_shouldSupport_sendingAndReceivingListsOfItems() {
         runBlocking {
             val array = listOf(
-                NrpcTestUtils.TestService.SimpleTestItem("item_1", listOf(1, 2)),
-                NrpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
-                NrpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
+                NarpcTestUtils.TestService.SimpleTestItem("item_1", listOf(1, 2)),
+                NarpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
+                NarpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
             )
             val response = service.reverse(array)
             assertTrue {

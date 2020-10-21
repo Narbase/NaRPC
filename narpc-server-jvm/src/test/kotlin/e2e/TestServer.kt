@@ -3,7 +3,7 @@ package jvm_library_test.e2e
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
-import e2e.NrpcTestUtils
+import e2e.NarpcTestUtils
 import com.narbase.narpc.server.NarpcKtorHandler
 import com.narbase.narpc.server.NarpcServer
 import io.ktor.application.*
@@ -36,7 +36,7 @@ object TestServer {
 
             authenticate("JwtAuth") {
                 post("/test") {
-                    NarpcKtorHandler(NarpcServer(NrpcTestUtils.RemoteTestService())).handle(call)
+                    NarpcKtorHandler(NarpcServer(NarpcTestUtils.RemoteTestService())).handle(call)
                 }
             }
         }

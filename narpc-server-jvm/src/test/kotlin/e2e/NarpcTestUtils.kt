@@ -7,11 +7,10 @@ import narpc.dto.FileContainer
 import java.io.File
 import kotlin.random.Random
 
-object NrpcTestUtils {
+object NarpcTestUtils {
     fun runServer() {
         TestServer.run()
     }
-
 
 
     fun deleteAllTestFiles() {
@@ -23,6 +22,7 @@ object NrpcTestUtils {
 
 
     interface TestService {
+        suspend fun empty()
         suspend fun hello(greeting: String): String
         suspend fun reverse(listToBeReversed: List<SimpleTestItem>): List<SimpleTestItem>
         suspend fun wrappedHello(greeting: Greeting): Greeting
@@ -39,6 +39,10 @@ object NrpcTestUtils {
         //        override lateinit var call: ApplicationCall
         @InjectApplicationCall
         lateinit var call: ApplicationCall
+
+        override suspend fun empty() {
+
+        }
 
         override suspend fun hello(greeting: String): String {
             println(call)
