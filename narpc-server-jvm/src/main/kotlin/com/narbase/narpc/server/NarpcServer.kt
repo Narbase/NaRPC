@@ -1,5 +1,6 @@
 package com.narbase.narpc.server
 
+import kotlinx.coroutines.Deferred
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -26,7 +27,7 @@ inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, serv
 class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
 //    var gson = Gson()
 
-    fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
+    suspend fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
         val results = requestDto.args.mapIndexed { index, any ->
@@ -36,15 +37,20 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
 
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result) , result) })
+            val res = if (result is Deferred<*>) result.await()
+            else result
+
+            NarpcResponseDto(res?.let {
+                Json.encodeToJsonElement(serializerForSending(res), res)
+            })
         } catch (e: NarpcBaseException) {
-            NarpcResponseDto(null, status = e.status, message = e.message?:"")
+            NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         } catch (t: InvocationTargetException) {
             val targetException = t.targetException
             if (targetException is NarpcBaseException) {
-                NarpcResponseDto(null, status = targetException.status, message = targetException.message?:"")
+                NarpcResponseDto(null, status = targetException.status, message = targetException.message ?: "")
             } else throw t
-        }catch (t: Throwable){
+        } catch (t: Throwable) {
             t.printStackTrace()
             throw  t
         }
@@ -88,7 +94,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             {})
     }
 
-    fun process(files: List<FileDescriptor>, requestDto: NarpcServerRequestDto): NarpcResponseDto {
+    suspend fun process(files: List<FileDescriptor>, requestDto: NarpcServerRequestDto): NarpcResponseDto {
 
         val method = getMethod(requestDto.functionName)
         println("NarpcServer::process: received files are ${files.mapNotNull { it.originalName }.joinToString()}")
@@ -122,9 +128,9 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             } else {
                 if (type.name == "kotlin.coroutines.Continuation") {
                     createContinuation()
-                }else{
+                } else {
                     if (arg is JsonElement) deserializeArgument(typesList, index, arg)
-                    else{
+                    else {
                         val serializer = serializer(type)
                         Json.decodeFromJsonElement(serializer, arg as JsonElement)
                     }
@@ -134,9 +140,9 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result) , result) })
+            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result), result) })
         } catch (e: NarpcBaseException) {
-            NarpcResponseDto(null, status = e.status, message = e.message?:"")
+            NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         }
 
     }

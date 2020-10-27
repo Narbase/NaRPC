@@ -12,6 +12,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import java.nio.file.Files
 import kotlin.random.Random
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -172,5 +173,14 @@ internal class NarpcTests {
             }
         }
     }
+
+    @Test
+    fun deferredRPCs_ShouldReturnDeferred_whenCalled(){
+        runBlocking {
+            val results = service.deferredIntsAsync(1, 32).await()
+            assertEquals(results, (1..32).toList())
+        }
+    }
+
 
 }

@@ -1,11 +1,12 @@
 package narpc.client
 
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.fromJson
 import kotlinx.serialization.serializer
 import narpc.dto.FileContainer
 import narpc.dto.NarpcResponseDto
@@ -58,11 +59,11 @@ class NarpcProxyListener<T : Any>(
 
         val nrpcResponse = Json.decodeFromString<NarpcResponseDto>(jsonValue)
 //        val nrpcResponse = gson.fromJson(jsonValue, NarpcResponseDto::class.java)
-        if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS){
-            when(nrpcResponse.status){
-                CommonCodes.UNKNOWN_ERROR-> throw UnknownErrorException(nrpcResponse.message)
-                CommonCodes.INVALID_REQUEST-> throw InvalidRequestException(nrpcResponse.message)
-                CommonCodes.UNAUTHENTICATED-> throw UnauthenticatedException(nrpcResponse.message)
+        if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS) {
+            when (nrpcResponse.status) {
+                CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message)
+                CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message)
+                CommonCodes.UNAUTHENTICATED -> throw UnauthenticatedException(nrpcResponse.message)
                 else -> throw NarpcBaseException(nrpcResponse.status, nrpcResponse.message)
             }
         }
@@ -70,7 +71,19 @@ class NarpcProxyListener<T : Any>(
         println("before desirialization: dto = $dto")
         if (dto != null) {
 //            result = gson.fromJson<Any>(dto, myMethod.returnType.javaType)
-            result = Json.decodeFromJsonElement(serializer(myMethod.returnType), dto)!!//Todo: Is this a safe !!
+
+            result = if ((myMethod.returnType as Any).toString().contains("kotlinx.coroutines.Deferred")) {
+                val serializer =
+                    serializer((myMethod.returnType.javaType as ParameterizedType).actualTypeArguments.first())
+                GlobalScope.async {
+                    Json.decodeFromJsonElement(serializer, dto)!!//Todo: Is this a safe !!
+                }
+
+            } else {
+                val serializer = serializer(myMethod.returnType)
+                Json.decodeFromJsonElement(serializer, dto)!!//Todo: Is this a safe !!
+            }
+
         }
         return result
     }

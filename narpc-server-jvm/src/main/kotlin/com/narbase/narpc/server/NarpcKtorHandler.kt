@@ -53,7 +53,7 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
         }
     }
 
-    fun processMultipart(parts: List<PartData>): NarpcResponseDto {
+    suspend fun processMultipart(parts: List<PartData>): NarpcResponseDto {
         val narpcDtoJson = parts.first { it is PartData.FormItem && it.name == "nrpcDto" }.let { it as PartData.FormItem }.value
         val requestDto = Json.decodeFromString<NarpcServerRequestDto>(narpcDtoJson)
 //        val requestDto = Gson().fromJson(narpcDtoJson, NarpcServerRequestDto::class.java)

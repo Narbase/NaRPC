@@ -3,6 +3,9 @@ package e2e
 import com.narbase.narpc.server.InjectApplicationCall
 import io.ktor.application.*
 import jvm_library_test.e2e.TestServer
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import kotlinx.serialization.Serializable
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseException
@@ -33,8 +36,11 @@ object NarpcTestUtils {
         suspend fun sendFiles(files: List<FileContainer>, firstNumber: Int, secondNumber: Int): Int
         suspend fun throwUnknownErrorException()
         suspend fun throwCustomException(exceptionCode: Int)
+        fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
+
         @Serializable
         data class Greeting(val greeting: String, val recepientIds: List<Int>)
+
         @Serializable
         data class SimpleTestItem(val name: String, val numbersList: List<Int>)
     }
@@ -111,8 +117,12 @@ object NarpcTestUtils {
         }
 
         override suspend fun throwCustomException(exceptionCode: Int) {
-            class MyCustomException(message: String): NarpcBaseException("$exceptionCode", message)
+            class MyCustomException(message: String) : NarpcBaseException("$exceptionCode", message)
             throw MyCustomException("throwing custom exception")
+        }
+
+        override fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>> = GlobalScope.async {
+            (start..end).toList()
         }
     }
 
