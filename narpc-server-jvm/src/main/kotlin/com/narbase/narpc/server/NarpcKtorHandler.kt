@@ -1,7 +1,6 @@
 package com.narbase.narpc.server
 
 
-import com.google.gson.Gson
 import io.ktor.application.ApplicationCall
 import io.ktor.features.UnsupportedMediaTypeException
 import io.ktor.http.ContentType
@@ -11,6 +10,9 @@ import io.ktor.http.content.readAllParts
 import io.ktor.http.content.streamProvider
 import io.ktor.request.*
 import io.ktor.response.respond
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 import java.nio.charset.Charset
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.memberProperties
@@ -53,7 +55,8 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
 
     fun processMultipart(parts: List<PartData>): NarpcResponseDto {
         val narpcDtoJson = parts.first { it is PartData.FormItem && it.name == "nrpcDto" }.let { it as PartData.FormItem }.value
-        val requestDto = Gson().fromJson(narpcDtoJson, NarpcServerRequestDto::class.java)
+        val requestDto = Json.decodeFromString<NarpcServerRequestDto>(narpcDtoJson)
+//        val requestDto = Gson().fromJson(narpcDtoJson, NarpcServerRequestDto::class.java)
         val files = parts.filter { it is PartData.FileItem }.map {
             val item = it as PartData.FileItem
             FileDescriptor(item.originalFileName, item.streamProvider())
@@ -66,12 +69,14 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
     private suspend fun ApplicationCall.extractDto(): NarpcServerRequestDto {
         return try {
             val text = receiveTextWithCorrectEncoding()
-            narpcServer.gson.fromJson(text, NarpcServerRequestDto::class.java)
+            Json.decodeFromString<NarpcServerRequestDto>(text)
+//            narpcServer.gson.fromJson(text, NarpcServerRequestDto::class.java)
                     ?: throw GsonParsingContentTransformationException()
         } catch (e: UnsupportedMediaTypeException) {
-            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
+            Json.decodeFromString<NarpcServerRequestDto>("{}")
+//            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
         } catch (e: ContentTransformationException) {
-            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
+            Json.decodeFromString<NarpcServerRequestDto>("{}")
         }
     }
 

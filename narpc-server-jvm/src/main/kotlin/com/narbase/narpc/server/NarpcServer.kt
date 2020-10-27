@@ -1,39 +1,66 @@
 package com.narbase.narpc.server
 
-import com.google.gson.Gson
-import com.google.gson.JsonElement
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.serializer
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseException
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.CoroutineContext
+import kotlin.reflect.full.starProjectedType
 
 
 @Suppress("FunctionName")
 inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, service::class.java)
 
 class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
-    var gson = Gson()
+//    var gson = Gson()
 
     fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
         val results = requestDto.args.mapIndexed { index, any ->
             val type = typesList[index]
-            gson.fromJson(any, type)
+            if (type.name == "kotlin.coroutines.Continuation") {
+                Continuation<Unit>(object : CoroutineContext {
+                    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+                        TODO("Not yet implemented")
+                    }
+
+                    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+                        TODO("Not yet implemented")
+                    }
+
+                    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+                        TODO("Not yet implemented")
+                    }
+                },
+                    {})
+            } else {
+                val serializer = serializer(type)
+                Json.decodeFromJsonElement(serializer, any)
+            }
+//            gson.fromJson(any, type)
         }.toTypedArray()
 
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializer(result::class.starProjectedType), result) })
         } catch (e: NarpcBaseException) {
-            NarpcResponseDto(null, status = e.status, message = e.message)
+            NarpcResponseDto(null, status = e.status, message = e.message?:"")
         } catch (t: InvocationTargetException) {
             val targetException = t.targetException
             if (targetException is NarpcBaseException) {
-                NarpcResponseDto(null, status = targetException.status, message = targetException.message)
+                NarpcResponseDto(null, status = targetException.status, message = targetException.message?:"")
             } else throw t
+        }catch (t: Throwable){
+            t.printStackTrace()
+            throw  t
         }
 
     }
@@ -70,15 +97,16 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
                     arg
                 }
             } else {
-                gson.fromJson((arg as JsonElement), type)
+                val serializer = serializer(type)
+                Json.decodeFromJsonElement(serializer, arg as JsonElement)
             }
         }.toTypedArray()
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { gson.toJsonTree(result) })
+            NarpcResponseDto(result?.let { Json.encodeToJsonElement(result) })
         } catch (e: NarpcBaseException) {
-            NarpcResponseDto(null, status = e.status, message = e.message)
+            NarpcResponseDto(null, status = e.status, message = e.message?:"")
         }
 
     }

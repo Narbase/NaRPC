@@ -1,7 +1,11 @@
 package narpc.dto
 
-import com.google.gson.JsonElement
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
+
+
+@Serializable
 actual class NarpcResponseDto(
     val dto: JsonElement?,
 
@@ -10,4 +14,5 @@ actual class NarpcResponseDto(
     val message: String = ""
 )
 
+@Serializable
 actual class NarpcServerRequestDto(val functionName: String, val args: List<JsonElement>)

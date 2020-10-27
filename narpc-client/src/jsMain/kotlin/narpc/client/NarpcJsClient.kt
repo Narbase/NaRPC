@@ -1,6 +1,8 @@
 package narpc.client
 
 import kotlinx.coroutines.await
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
@@ -21,10 +23,16 @@ import kotlin.js.json
 
 object NarpcJsClient {
 
-    suspend fun sendRequest(endpoint: String, methodName: String, args: Array<Any>, headers: Map<String, String>): NarpcResponseDto {
+    suspend fun sendRequest(
+        endpoint: String,
+        methodName: String,
+        args: Array<Any>,
+        headers: Map<String, String>
+    ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
+                .map { Json.encodeToJsonElement(it) }
                 .toTypedArray())
 
         console.log("sendRequest")
@@ -51,7 +59,7 @@ object NarpcJsClient {
             it is FileContainer ||
                     (it is Collection<*> && it.isNotEmpty() && it.first() is FileContainer) ||
                     (it is Array<*> && it.isNotEmpty() && it.first() is FileContainer)
-        }
+        }.map { Json.encodeToJsonElement(it) }
             .toTypedArray())
 
         val formData = FormData()

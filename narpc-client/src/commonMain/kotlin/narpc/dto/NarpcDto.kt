@@ -1,5 +1,8 @@
 package narpc.dto
 
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+
 
 /*
  * NARBASE TECHNOLOGIES CONFIDENTIAL
@@ -11,7 +14,8 @@ package narpc.dto
  */
 
 @Suppress("unused", "ArrayInDataClass")
-data class NarpcClientRequestDto(val functionName: String, val args: Array<Any>)
+@Serializable
+data class NarpcClientRequestDto(val functionName: String, val args: Array<JsonElement>)
 
 
 expect class NarpcServerRequestDto

@@ -10,8 +10,8 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.features.*
-import io.ktor.gson.*
 import io.ktor.routing.*
+import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import org.slf4j.event.Level
@@ -21,10 +21,13 @@ object TestServer {
         embeddedServer(Netty, port = 8010, module = { testModule() }).apply { start(false) }
     }
     private fun Application.testModule() {
+
         install(ContentNegotiation) {
-            gson {
-                setPrettyPrinting()
-            }
+            json()
+//            serialization(ContentType.Any)
+//            gson {
+//                setPrettyPrinting()
+//            }
 
         }
         install(CallLogging) {

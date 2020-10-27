@@ -1,7 +1,11 @@
 package narpc.client
 
-import com.google.gson.Gson
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.fromJson
 import narpc.dto.FileContainer
 import narpc.dto.NarpcResponseDto
 import narpc.exceptions.*
@@ -35,6 +39,7 @@ class NarpcProxyListener<T : Any>(
 
     }
 
+    @OptIn(InternalSerializationApi::class)
     private suspend fun makeCall(method: Method, service: KClass<T>, args: Array<Any>): Any {
         var result: Any = Unit
         val methodName = method.name
@@ -50,8 +55,8 @@ class NarpcProxyListener<T : Any>(
             NarpcKtorClient.sendRequest(endpoint, methodName, args, globalHeaders)
         }
 
-        val gson = Gson()
-        val nrpcResponse = gson.fromJson(jsonValue, NarpcResponseDto::class.java)
+        val nrpcResponse = Json.decodeFromString<NarpcResponseDto>(jsonValue)
+//        val nrpcResponse = gson.fromJson(jsonValue, NarpcResponseDto::class.java)
         if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS){
             when(nrpcResponse.status){
                 CommonCodes.UNKNOWN_ERROR-> throw UnknownErrorException(nrpcResponse.message)
@@ -63,7 +68,8 @@ class NarpcProxyListener<T : Any>(
         val dto = nrpcResponse.dto
         println("before desirialization: dto = $dto")
         if (dto != null) {
-            result = gson.fromJson<Any>(dto, myMethod.returnType.javaType)
+//            result = gson.fromJson<Any>(dto, myMethod.returnType.javaType)
+            result = Json.decodeFromJsonElement<Any>(dto)
         }
         return result
     }

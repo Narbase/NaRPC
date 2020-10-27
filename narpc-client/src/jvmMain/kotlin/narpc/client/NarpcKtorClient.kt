@@ -1,11 +1,10 @@
 package narpc.client
 
-import com.google.gson.Gson
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.apache.Apache
 import io.ktor.client.features.*
-import io.ktor.client.features.json.GsonSerializer
 import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.*
 import io.ktor.client.request.forms.FormBuilder
 import io.ktor.client.request.forms.FormPart
 import io.ktor.client.request.forms.MultiPartFormDataContent
@@ -15,10 +14,25 @@ import io.ktor.client.request.post
 import io.ktor.http.*
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.serializer
 import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.exceptions.ServerException
+import kotlin.coroutines.Continuation
+import kotlin.reflect.KClass
+import kotlin.reflect.KType
+import kotlin.reflect.full.starProjectedType
+import kotlin.reflect.jvm.jvmErasure
 
 /*
  * NARBASE TECHNOLOGIES CONFIDENTIAL
@@ -29,27 +43,34 @@ import narpc.exceptions.ServerException
  * On: 2020/09/18.
  */
 
+@Serializable
+class ContinuationClass()
 object NarpcKtorClient {
 
     private val client by lazy {
         HttpClient(Apache) {
-/*
             engine {
                 connectionRequestTimeout = 0
                 connectTimeout = 0
                 socketTimeout = 0
 
             }
-*/
             install(JsonFeature) {
-                serializer = GsonSerializer {
-                    serializeNulls()
-                    disableHtmlEscaping()
-                }
+                serializer = KotlinxSerializer()
+/*
+                    GsonSerializer {
+                        serializeNulls()
+                        disableHtmlEscaping()
+                    }
+*/
             }
         }
     }
 
+    private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
+    private const val defaultHttpErrorMessage = ""
+
+    @InternalSerializationApi
     suspend fun sendRequest(
         endpoint: String,
         methodName: String,
@@ -57,7 +78,32 @@ object NarpcKtorClient {
         globalHeaders: Map<String, String>
     ): String {
 
-        val dto = NarpcClientRequestDto(methodName, args)
+        val argsList = args.toList()
+//        val serial = serializerForSending(argsList, SerializersModule {  })
+
+//        ListSerializer(argsList.elementSerializer(SerializersModule {  }))
+        val dto = NarpcClientRequestDto(
+            methodName,
+            argsList.map {
+//            val serial = it::class.serializer() // reflection call to get real KClass
+                try {
+                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
+                    Json.encodeToJsonElement(serial, it)
+
+                } catch (e: UnsupportedOperationException) {
+                    if (it is Continuation<*>) {
+//                        val serial = serializer<Continuation<Unit>>()
+
+                        Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
+                    } else {
+                        val serial = serializer(it::class.java)
+                        Json.encodeToJsonElement(serial, it)
+                    }
+                }
+            }.toTypedArray()
+
+//            (Json.encodeToJsonElement(serial, argsList) as JsonArray).toTypedArray()
+        )
         println("requestDto = $dto")
         try {
             val response: String = client.post(endpoint) {
@@ -75,13 +121,97 @@ object NarpcKtorClient {
         } catch (t: Throwable) {
             t.printStackTrace()
             if (t is ResponseException) {
-                throw ServerException(t.response.status.value, t.response.status.description, t.localizedMessage)
+                throw ServerException(
+                    t.response?.status?.value ?: defaultHttpErrorCode,
+                    t.response?.status?.description ?: defaultHttpErrorMessage,
+                    t.localizedMessage
+                )
             } else {
                 throw t
             }
         }
     }
 
+    /***
+     * The following few functions are ripped of ktor's serialization
+     */
+
+    @OptIn(InternalSerializationApi::class)
+    internal fun serializerForSending(value: Any, module: SerializersModule): KSerializer<*> = when (value) {
+        is JsonElement -> JsonElement.serializer()
+        is List<*> -> ListSerializer(value.elementSerializer(module))
+        is Set<*> -> SetSerializer(value.elementSerializer(module))
+        is Map<*, *> -> MapSerializer(value.keys.elementSerializer(module), value.values.elementSerializer(module))
+        is Map.Entry<*, *> -> MapEntrySerializer(
+            serializerForSending(value.key ?: error("Map.Entry(null, ...) is not supported"), module),
+            serializerForSending(value.value ?: error("Map.Entry(..., null) is not supported)"), module)
+        )
+        is Array<*> -> {
+            val componentType = value.javaClass.componentType.kotlin.starProjectedType
+            val componentClass =
+                componentType.classifier as? KClass<*> ?: error("Unsupported component type $componentType")
+
+            @Suppress("UNCHECKED_CAST")
+            (ArraySerializer(
+                componentClass as KClass<Any>,
+                serializerByTypeInfo(componentType) as KSerializer<Any>
+            ))
+        }
+        else -> module.getContextual(value::class) ?: value::class.serializer()
+    }
+
+    @OptIn(ExperimentalStdlibApi::class)
+    internal fun serializerByTypeInfo(type: KType): KSerializer<*> {
+        val classifierClass = type.classifier as? KClass<*>
+        if (classifierClass != null && classifierClass.java.isArray) {
+            return arraySerializer(type)
+        }
+
+        return serializer(type)
+    }
+
+    // NOTE: this should be removed once kotlinx.serialization serializer get support of arrays that is blocked by KT-32839
+    private fun arraySerializer(type: KType): KSerializer<*> {
+        val elementType = type.arguments[0].type ?: error("Array<*> is not supported")
+        val elementSerializer = serializerByTypeInfo(elementType)
+
+
+        @Suppress("UNCHECKED_CAST")
+        return ArraySerializer(
+            elementType.jvmErasure as KClass<Any>,
+            elementSerializer as KSerializer<Any>
+        )
+    }
+
+
+    @Suppress("EXPERIMENTAL_API_USAGE_ERROR")
+    private fun Collection<*>.elementSerializer(module: SerializersModule): KSerializer<*> {
+        val serializers = mapNotNull { value ->
+            value?.let { serializerForSending(it, module) }
+        }.distinctBy { it.descriptor.serialName }
+
+        if (serializers.size > 1) {
+            val message = "Serializing collections of different element types is not yet supported. " +
+                    "Selected serializers: ${serializers.map { it.descriptor.serialName }}"
+            error(message)
+        }
+
+        val selected: KSerializer<*> = serializers.singleOrNull() ?: String.serializer()
+        if (selected.descriptor.isNullable) {
+            return selected
+        }
+
+        @Suppress("UNCHECKED_CAST")
+        selected as KSerializer<Any>
+
+        if (any { it == null }) {
+            return selected.nullable
+        }
+
+        return selected
+    }
+
+    @InternalSerializationApi
     suspend fun sendMultipartRequest(
         endpoint: String,
         methodName: String,
@@ -91,7 +221,13 @@ object NarpcKtorClient {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
-                .toTypedArray())
+                .map {
+                    val serial: KSerializer<Any> =
+                        it::class.serializer() as KSerializer<Any> // reflection call to get real KClass
+                    Json.encodeToJsonElement(serial, it)
+                }
+                .toTypedArray()
+        )
         try {
             val response: String = client.post(endpoint) {
                 headers {
@@ -115,7 +251,7 @@ object NarpcKtorClient {
                                 }
                             }
                         }
-                        this.append(FormPart("nrpcDto", Gson().toJson(dto)))
+                        this.append(FormPart("nrpcDto", Json.encodeToString(dto)))
                     }
                 )
             }
@@ -123,7 +259,11 @@ object NarpcKtorClient {
         } catch (t: Throwable) {
             t.printStackTrace()
             if (t is ResponseException) {
-                throw ServerException(t.response.status.value, t.response.status.description, t.localizedMessage)
+                throw ServerException(
+                    t.response?.status?.value ?: defaultHttpErrorCode,
+                    t.response?.status?.description ?: defaultHttpErrorMessage,
+                    t.localizedMessage
+                )
             } else {
                 throw t
             }
