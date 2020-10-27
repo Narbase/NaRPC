@@ -1,9 +1,14 @@
 package com.narbase.narpc.server
 
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
+import narpc.client.NarpcKtorClient
+import narpc.client.serializerForSending
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseException
 import java.lang.reflect.InvocationTargetException
@@ -25,32 +30,13 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
         val results = requestDto.args.mapIndexed { index, any ->
-            val type = typesList[index]
-            if (type.name == "kotlin.coroutines.Continuation") {
-                Continuation<Unit>(object : CoroutineContext {
-                    override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
-                        TODO("Not yet implemented")
-                    }
-
-                    override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
-                        TODO("Not yet implemented")
-                    }
-
-                    override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
-                        TODO("Not yet implemented")
-                    }
-                },
-                    {})
-            } else {
-                val serializer = serializer(type)
-                Json.decodeFromJsonElement(serializer, any)
-            }
+            deserializeArgument(typesList, index, any)
 //            gson.fromJson(any, type)
         }.toTypedArray()
 
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializer(result::class.starProjectedType), result) })
+            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result) , result) })
         } catch (e: NarpcBaseException) {
             NarpcResponseDto(null, status = e.status, message = e.message?:"")
         } catch (t: InvocationTargetException) {
@@ -63,6 +49,43 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             throw  t
         }
 
+    }
+
+    private fun deserializeArgument(
+        typesList: Array<Class<*>>,
+        index: Int,
+        any: JsonElement
+    ): Any? {
+        val type = typesList[index]
+        return if (type.name == "kotlin.coroutines.Continuation") {
+            createContinuation()
+        } else {
+            try {
+                val serializer = serializer(type)
+                Json.decodeFromJsonElement(serializer, any)
+            } catch (t: Throwable) {
+                t.printStackTrace()
+                val serializer = serializerForSending(any, SerializersModule { })
+                Json.decodeFromJsonElement(serializer, any)
+            }
+        }
+    }
+
+    private fun createContinuation(): Continuation<Unit> {
+        return Continuation<Unit>(object : CoroutineContext {
+            override fun <R> fold(initial: R, operation: (R, CoroutineContext.Element) -> R): R {
+                TODO("Not yet implemented")
+            }
+
+            override fun <E : CoroutineContext.Element> get(key: CoroutineContext.Key<E>): E? {
+                TODO("Not yet implemented")
+            }
+
+            override fun minusKey(key: CoroutineContext.Key<*>): CoroutineContext {
+                TODO("Not yet implemented")
+            }
+        },
+            {})
     }
 
     fun process(files: List<FileDescriptor>, requestDto: NarpcServerRequestDto): NarpcResponseDto {
@@ -97,14 +120,21 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
                     arg
                 }
             } else {
-                val serializer = serializer(type)
-                Json.decodeFromJsonElement(serializer, arg as JsonElement)
+                if (type.name == "kotlin.coroutines.Continuation") {
+                    createContinuation()
+                }else{
+                    if (arg is JsonElement) deserializeArgument(typesList, index, arg)
+                    else{
+                        val serializer = serializer(type)
+                        Json.decodeFromJsonElement(serializer, arg as JsonElement)
+                    }
+                }
             }
         }.toTypedArray()
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { Json.encodeToJsonElement(result) })
+            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result) , result) })
         } catch (e: NarpcBaseException) {
             NarpcResponseDto(null, status = e.status, message = e.message?:"")
         }

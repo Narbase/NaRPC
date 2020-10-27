@@ -6,6 +6,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.fromJson
+import kotlinx.serialization.serializer
 import narpc.dto.FileContainer
 import narpc.dto.NarpcResponseDto
 import narpc.exceptions.*
@@ -69,7 +70,7 @@ class NarpcProxyListener<T : Any>(
         println("before desirialization: dto = $dto")
         if (dto != null) {
 //            result = gson.fromJson<Any>(dto, myMethod.returnType.javaType)
-            result = Json.decodeFromJsonElement<Any>(dto)
+            result = Json.decodeFromJsonElement(serializer(myMethod.returnType), dto)!!//Todo: Is this a safe !!
         }
         return result
     }

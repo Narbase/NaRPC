@@ -14,16 +14,11 @@ import io.ktor.client.request.post
 import io.ktor.http.*
 import io.ktor.utils.io.core.buildPacket
 import io.ktor.utils.io.core.writeFully
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
+import kotlinx.serialization.*
 import kotlinx.serialization.builtins.*
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.serializer
 import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
@@ -86,20 +81,7 @@ object NarpcKtorClient {
             methodName,
             argsList.map {
 //            val serial = it::class.serializer() // reflection call to get real KClass
-                try {
-                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
-                    Json.encodeToJsonElement(serial, it)
-
-                } catch (e: UnsupportedOperationException) {
-                    if (it is Continuation<*>) {
-//                        val serial = serializer<Continuation<Unit>>()
-
-                        Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
-                    } else {
-                        val serial = serializer(it::class.java)
-                        Json.encodeToJsonElement(serial, it)
-                    }
-                }
+                serializeArgument(it)
             }.toTypedArray()
 
 //            (Json.encodeToJsonElement(serial, argsList) as JsonArray).toTypedArray()
@@ -132,84 +114,34 @@ object NarpcKtorClient {
         }
     }
 
-    /***
-     * The following few functions are ripped of ktor's serialization
-     */
+    private fun serializeArgument(arg: Any): JsonElement {
+        return try {
+    //                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
+            val serializer = serializerForSending(
+                arg,
+                SerializersModule { }) as KSerializer<Any> // reflection call to get real KClass
+            Json.encodeToJsonElement(serializer, arg)
 
-    @OptIn(InternalSerializationApi::class)
-    internal fun serializerForSending(value: Any, module: SerializersModule): KSerializer<*> = when (value) {
-        is JsonElement -> JsonElement.serializer()
-        is List<*> -> ListSerializer(value.elementSerializer(module))
-        is Set<*> -> SetSerializer(value.elementSerializer(module))
-        is Map<*, *> -> MapSerializer(value.keys.elementSerializer(module), value.values.elementSerializer(module))
-        is Map.Entry<*, *> -> MapEntrySerializer(
-            serializerForSending(value.key ?: error("Map.Entry(null, ...) is not supported"), module),
-            serializerForSending(value.value ?: error("Map.Entry(..., null) is not supported)"), module)
-        )
-        is Array<*> -> {
-            val componentType = value.javaClass.componentType.kotlin.starProjectedType
-            val componentClass =
-                componentType.classifier as? KClass<*> ?: error("Unsupported component type $componentType")
+        } catch (e: UnsupportedOperationException) {
+            if (arg is Continuation<*>) {
+    //                        val serial = serializer<Continuation<Unit>>()
 
-            @Suppress("UNCHECKED_CAST")
-            (ArraySerializer(
-                componentClass as KClass<Any>,
-                serializerByTypeInfo(componentType) as KSerializer<Any>
-            ))
+                Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
+            } else {
+                val serial = serializer(arg::class.java)
+                Json.encodeToJsonElement(serial, arg)
+            }
+        } catch (e: SerializationException) {
+            if (arg is Continuation<*>) {
+    //                        val serial = serializer<Continuation<Unit>>()
+                Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
+            } else {
+                val serial = serializer(arg::class.java)
+                Json.encodeToJsonElement(serial, arg)
+            }
         }
-        else -> module.getContextual(value::class) ?: value::class.serializer()
     }
 
-    @OptIn(ExperimentalStdlibApi::class)
-    internal fun serializerByTypeInfo(type: KType): KSerializer<*> {
-        val classifierClass = type.classifier as? KClass<*>
-        if (classifierClass != null && classifierClass.java.isArray) {
-            return arraySerializer(type)
-        }
-
-        return serializer(type)
-    }
-
-    // NOTE: this should be removed once kotlinx.serialization serializer get support of arrays that is blocked by KT-32839
-    private fun arraySerializer(type: KType): KSerializer<*> {
-        val elementType = type.arguments[0].type ?: error("Array<*> is not supported")
-        val elementSerializer = serializerByTypeInfo(elementType)
-
-
-        @Suppress("UNCHECKED_CAST")
-        return ArraySerializer(
-            elementType.jvmErasure as KClass<Any>,
-            elementSerializer as KSerializer<Any>
-        )
-    }
-
-
-    @Suppress("EXPERIMENTAL_API_USAGE_ERROR")
-    private fun Collection<*>.elementSerializer(module: SerializersModule): KSerializer<*> {
-        val serializers = mapNotNull { value ->
-            value?.let { serializerForSending(it, module) }
-        }.distinctBy { it.descriptor.serialName }
-
-        if (serializers.size > 1) {
-            val message = "Serializing collections of different element types is not yet supported. " +
-                    "Selected serializers: ${serializers.map { it.descriptor.serialName }}"
-            error(message)
-        }
-
-        val selected: KSerializer<*> = serializers.singleOrNull() ?: String.serializer()
-        if (selected.descriptor.isNullable) {
-            return selected
-        }
-
-        @Suppress("UNCHECKED_CAST")
-        selected as KSerializer<Any>
-
-        if (any { it == null }) {
-            return selected.nullable
-        }
-
-        return selected
-    }
 
     @InternalSerializationApi
     suspend fun sendMultipartRequest(
@@ -222,9 +154,7 @@ object NarpcKtorClient {
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
                 .map {
-                    val serial: KSerializer<Any> =
-                        it::class.serializer() as KSerializer<Any> // reflection call to get real KClass
-                    Json.encodeToJsonElement(serial, it)
+                    serializeArgument(it)
                 }
                 .toTypedArray()
         )
@@ -295,3 +225,86 @@ object NarpcKtorClient {
 */
 
 }
+
+
+/***
+ * The following few functions are ripped of ktor's serialization
+ */
+
+public fun serializerForSending(value: Any): KSerializer<Any> = serializerForSending(value, SerializersModule { }) as KSerializer<Any>
+
+@OptIn(InternalSerializationApi::class)
+public fun serializerForSending(value: Any, module: SerializersModule): KSerializer<*> = when (value) {
+    is JsonElement -> JsonElement.serializer()
+    is List<*> -> ListSerializer(value.elementSerializer(module))
+    is Set<*> -> SetSerializer(value.elementSerializer(module))
+    is Map<*, *> -> MapSerializer(value.keys.elementSerializer(module), value.values.elementSerializer(module))
+    is Map.Entry<*, *> -> MapEntrySerializer(
+        serializerForSending(value.key ?: error("Map.Entry(null, ...) is not supported"), module),
+        serializerForSending(value.value ?: error("Map.Entry(..., null) is not supported)"), module)
+    )
+    is Array<*> -> {
+        val componentType = value.javaClass.componentType.kotlin.starProjectedType
+        val componentClass =
+            componentType.classifier as? KClass<*> ?: error("Unsupported component type $componentType")
+
+        @Suppress("UNCHECKED_CAST")
+        (ArraySerializer(
+            componentClass as KClass<Any>,
+            serializerByTypeInfo(componentType) as KSerializer<Any>
+        ))
+    }
+    else -> module.getContextual(value::class) ?: value::class.serializer()
+}
+
+@OptIn(ExperimentalStdlibApi::class)
+internal fun serializerByTypeInfo(type: KType): KSerializer<*> {
+    val classifierClass = type.classifier as? KClass<*>
+    if (classifierClass != null && classifierClass.java.isArray) {
+        return arraySerializer(type)
+    }
+
+    return serializer(type)
+}
+
+// NOTE: this should be removed once kotlinx.serialization serializer get support of arrays that is blocked by KT-32839
+private fun arraySerializer(type: KType): KSerializer<*> {
+    val elementType = type.arguments[0].type ?: error("Array<*> is not supported")
+    val elementSerializer = serializerByTypeInfo(elementType)
+
+
+    @Suppress("UNCHECKED_CAST")
+    return ArraySerializer(
+        elementType.jvmErasure as KClass<Any>,
+        elementSerializer as KSerializer<Any>
+    )
+}
+
+
+@Suppress("EXPERIMENTAL_API_USAGE_ERROR")
+private fun Collection<*>.elementSerializer(module: SerializersModule): KSerializer<*> {
+    val serializers = mapNotNull { value ->
+        value?.let { serializerForSending(it, module) }
+    }.distinctBy { it.descriptor.serialName }
+
+    if (serializers.size > 1) {
+        val message = "Serializing collections of different element types is not yet supported. " +
+                "Selected serializers: ${serializers.map { it.descriptor.serialName }}"
+        error(message)
+    }
+
+    val selected: KSerializer<*> = serializers.singleOrNull() ?: String.serializer()
+    if (selected.descriptor.isNullable) {
+        return selected
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    selected as KSerializer<Any>
+
+    if (any { it == null }) {
+        return selected.nullable
+    }
+
+    return selected
+}
+
