@@ -4,7 +4,7 @@ import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
-import narpc.exceptions.NarpcBaseException
+import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
 import narpc.exceptions.UnknownErrorException
 import org.junit.Before
@@ -24,6 +24,10 @@ internal class NarpcTests {
         )
     )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
+
+    val DIVISION_BY_ZERO_STATUS = "DIVISION_BY_ZERO_STATUS"
+
+
 
     companion object {
         @BeforeClass
@@ -141,7 +145,7 @@ internal class NarpcTests {
             assertFailsWith(ServerException::class) {
                 try {
 
-                    val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath",)
+                    val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
                     client.doSomething(2)
                 } catch (e: ServerException) {
                     assertTrue { e.httpStatus == 404 }
@@ -163,12 +167,28 @@ internal class NarpcTests {
     @Test
     fun theErrorCodeUsedInCustomException_shouldBeReceived_whenItIsThrownServerSide() {
         runBlocking {
-            assertFailsWith(NarpcBaseException::class) {
+            assertFailsWith(NarpcException::class) {
                 val exceptionStatus = 2
                 try {
                     service.throwCustomException(exceptionStatus)
-                } catch (e: NarpcBaseException) {
+                } catch (e: NarpcException) {
                     assertTrue { e.status.toIntOrNull() == exceptionStatus }
+                    throw e
+                }
+            }
+        }
+    }
+
+    @Test
+    fun exceptionInExceptionsMap_shouldBeReceived_whenItIsThrownServerSide() {
+        runBlocking {
+            assertFailsWith(NarpcException::class) {
+                val exceptionMessage = "agprejgiwogpw"
+                try {
+                    service.throwExceptionMapExampleException(exceptionMessage)
+                } catch (e: NarpcException) {
+                    assertTrue { e.status == NarpcTestUtils.EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS }
+                    assertTrue { e.message == exceptionMessage }
                     throw e
                 }
             }

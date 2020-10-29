@@ -1,24 +1,19 @@
 package com.narbase.narpc.server
 
 import kotlinx.coroutines.Deferred
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.serializer
-import narpc.client.NarpcKtorClient
 import narpc.client.serializerForSending
 import narpc.dto.FileContainer
-import narpc.exceptions.NarpcBaseException
+import narpc.exceptions.NarpcException
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
-import kotlin.reflect.full.starProjectedType
 
 
 @Suppress("FunctionName")
@@ -43,11 +38,11 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             NarpcResponseDto(res?.let {
                 Json.encodeToJsonElement(serializerForSending(res), res)
             })
-        } catch (e: NarpcBaseException) {
+        } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         } catch (t: InvocationTargetException) {
             val targetException = t.targetException
-            if (targetException is NarpcBaseException) {
+            if (targetException is NarpcException) {
                 NarpcResponseDto(null, status = targetException.status, message = targetException.message ?: "")
             } else throw t
         } catch (t: Throwable) {
@@ -141,7 +136,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         return try {
             val result = method.invoke(service, *results)
             NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result), result) })
-        } catch (e: NarpcBaseException) {
+        } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         }
 

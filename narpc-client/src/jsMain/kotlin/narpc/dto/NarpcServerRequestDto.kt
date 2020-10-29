@@ -12,5 +12,5 @@ actual data class NarpcResponseDto(
 
     val status: String = "0",
 
-    val message: String? = null
+    val message: String = ""
 )

@@ -1,6 +1,5 @@
 package narpc.client
 
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -26,6 +25,9 @@ actual object NarpcClient {
         val proxy = NarpcProxyListener(endpoint, serviceClass, headers)
         return Proxy.newProxyInstance(classLoader, interfaces, proxy) as T
     }
+
+    actual val exceptionsMap: MutableMap<String, NarpcBaseExceptionFactory> = mutableMapOf()
+
 }
 
 class NarpcProxyListener<T : Any>(
@@ -64,7 +66,9 @@ class NarpcProxyListener<T : Any>(
                 CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message)
                 CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message)
                 CommonCodes.UNAUTHENTICATED -> throw UnauthenticatedException(nrpcResponse.message)
-                else -> throw NarpcBaseException(nrpcResponse.status, nrpcResponse.message)
+                else -> NarpcClient.exceptionsMap[nrpcResponse.status]?.let { exceptionFactory ->
+                    throw exceptionFactory.newInstance(nrpcResponse.message)
+                } ?: throw NarpcException(nrpcResponse.status, nrpcResponse.message)
             }
         }
         val dto = nrpcResponse.dto

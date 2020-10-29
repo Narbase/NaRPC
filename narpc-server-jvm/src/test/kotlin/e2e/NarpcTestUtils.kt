@@ -7,13 +7,25 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.serialization.Serializable
+import narpc.client.NarpcClient
 import narpc.dto.FileContainer
-import narpc.exceptions.NarpcBaseException
+import narpc.exceptions.NarpcException
+import narpc.exceptions.NarpcBaseExceptionFactory
 import narpc.exceptions.UnknownErrorException
 import java.io.File
 import kotlin.random.Random
 
 object NarpcTestUtils {
+    const val EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS = "EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS"
+
+    class ExceptionMapExampleException(message: String) :
+        NarpcException(EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS, message)
+
+    init {
+        NarpcClient.exceptionsMap[EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS] =
+            NarpcBaseExceptionFactory { message -> ExceptionMapExampleException(message) }
+    }
+
     fun runServer() {
         TestServer.run()
     }
@@ -36,6 +48,7 @@ object NarpcTestUtils {
         suspend fun sendFiles(files: List<FileContainer>, firstNumber: Int, secondNumber: Int): Int
         suspend fun throwUnknownErrorException()
         suspend fun throwCustomException(exceptionCode: Int)
+        suspend fun throwExceptionMapExampleException(message: String)
         fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
 
         @Serializable
@@ -117,8 +130,12 @@ object NarpcTestUtils {
         }
 
         override suspend fun throwCustomException(exceptionCode: Int) {
-            class MyCustomException(message: String) : NarpcBaseException("$exceptionCode", message)
+            class MyCustomException(message: String) : NarpcException("$exceptionCode", message)
             throw MyCustomException("throwing custom exception")
+        }
+
+        override suspend fun throwExceptionMapExampleException(message: String) {
+            throw ExceptionMapExampleException(message)
         }
 
         override fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>> = GlobalScope.async {

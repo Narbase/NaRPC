@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import narpc.client.NarpcClient
 import narpc.client.decodeNarpcResponse
-import narpc.exceptions.NarpcBaseException
+import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
 import narpc.exceptions.UnknownErrorException
 import kotlin.test.Test
@@ -29,7 +29,6 @@ internal class NarpcTests {
         ),
     )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
-
 
 
     @Test
@@ -84,22 +83,29 @@ internal class NarpcTests {
         }
     }
 
+    //        Todo: figure out how to handle creating client side files for testing
+/*
     @Test
     fun fileSend_shouldReturnTrue_whenCalledWithAValidFile() = GlobalScope.promise {
 //        Todo: figure out how to handle creating client side files for testing
 //
+*/
 /*  val file = Files.createTempFile("testFile", null).toFile()
     file.writeText("test")
         val response = service.sendFile(FileContainer(file))
         assertTrue {
             response
         }
-*/
+*//*
+
     }
+*/
 
 
+/*
     @Test
     fun listOfFilesAndNumber_shouldReturnNumber_whenCalled() = GlobalScope.promise {
+*/
 /*
         val testFiles = (1..5).map { number ->
             val file = Files.createTempFile("testFile_$number", null).toFile()
@@ -113,8 +119,10 @@ internal class NarpcTests {
         assertTrue {
             response == (firstNumber - secondNumber)
         }
-*/
+*//*
+
     }
+*/
 
 
     @Test
@@ -160,12 +168,26 @@ internal class NarpcTests {
 
     @Test
     fun theErrorCodeUsedInCustomException_shouldBeReceived_whenItIsThrownServerSide() = GlobalScope.promise {
-        assertFailsWith(NarpcBaseException::class) {
+        assertFailsWith(NarpcException::class) {
             val exceptionStatus = 2
             try {
                 service.throwCustomException(exceptionStatus).await()
-            } catch (e: NarpcBaseException) {
+            } catch (e: NarpcException) {
                 assertTrue { e.status.toIntOrNull() == exceptionStatus }
+                throw e
+            }
+        }
+    }
+
+    @Test
+    fun exceptionInExceptionsMap_shouldBeReceived_whenItIsThrownServerSide() = GlobalScope.promise {
+        assertFailsWith(NarpcException::class) {
+            val exceptionMessage = "agprejgiwogpw"
+            try {
+                service.throwExceptionMapExampleException(exceptionMessage).await()
+            } catch (e: NarpcException) {
+                assertTrue { e.status == NarpcTestUtils.EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS }
+                assertTrue { e.message == exceptionMessage }
                 throw e
             }
         }

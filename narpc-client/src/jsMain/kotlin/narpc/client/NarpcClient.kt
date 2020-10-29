@@ -3,9 +3,6 @@ package narpc.client
 import com.narbase.narnic.narpc.cilent.js.Proxy
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import narpc.dto.FileContainer
 import narpc.exceptions.*
 import utils.json
@@ -82,10 +79,12 @@ actual object NarpcClient {
 
         if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS) {
             when (nrpcResponse.status) {
-                CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message?:"")
-                CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message?:"")
-                CommonCodes.UNAUTHENTICATED -> throw UnauthenticatedException(nrpcResponse.message?:"")
-                else -> throw NarpcBaseException(nrpcResponse.status, nrpcResponse.message?:"")
+                CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message)
+                CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message)
+                CommonCodes.UNAUTHENTICATED -> throw UnauthenticatedException(nrpcResponse.message)
+                else -> exceptionsMap[nrpcResponse.status]?.let { exceptionFactory ->
+                    throw exceptionFactory.newInstance(nrpcResponse.message)
+                } ?: throw NarpcException(nrpcResponse.status, nrpcResponse.message)
             }
         }
 
@@ -95,6 +94,8 @@ actual object NarpcClient {
         }
         return Unit
     }
+
+    actual val exceptionsMap: MutableMap<String, NarpcBaseExceptionFactory> = mutableMapOf()
 
 }
 

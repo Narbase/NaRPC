@@ -3,11 +3,14 @@ package narpc.exceptions
 class ServerException(val httpStatus: Int, val httpStatusDescription: String, message: String) :
     RuntimeException(message)
 
-open class NarpcBaseException(val status: String, message: String) : RuntimeException(message)
+open class NarpcException(val status: String, message: String) : RuntimeException(message)
+fun interface NarpcBaseExceptionFactory {
+    fun newInstance(message: String): NarpcException
+}
 
-class UnauthenticatedException(message: String) : NarpcBaseException(CommonCodes.UNAUTHENTICATED, message)
-class InvalidRequestException(message: String) : NarpcBaseException(CommonCodes.INVALID_REQUEST, message)
-class UnknownErrorException(message: String) : NarpcBaseException(CommonCodes.UNKNOWN_ERROR, message)
+class UnauthenticatedException(message: String) : NarpcException(CommonCodes.UNAUTHENTICATED, message)
+class InvalidRequestException(message: String) : NarpcException(CommonCodes.INVALID_REQUEST, message)
+class UnknownErrorException(message: String) : NarpcException(CommonCodes.UNKNOWN_ERROR, message)
 
 
 object CommonCodes {
