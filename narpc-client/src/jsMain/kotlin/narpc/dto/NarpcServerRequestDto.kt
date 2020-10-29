@@ -1,9 +1,14 @@
 package narpc.dto
 
-actual class NarpcServerRequestDto(val functionName: String, val args: Array<JSON>)
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
-actual class NarpcResponseDto(
-    val dto: JSON?,
+@Serializable
+actual class NarpcServerRequestDto(val functionName: String, val args: Array<JsonElement>)
+
+@Serializable
+actual data class NarpcResponseDto(
+    val dto: JsonElement?,
 
     val status: String = "0",
 

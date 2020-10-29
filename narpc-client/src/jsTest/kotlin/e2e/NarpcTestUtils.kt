@@ -1,0 +1,39 @@
+package e2e
+
+import kotlinx.coroutines.Deferred
+import kotlinx.serialization.Serializable
+import narpc.dto.FileContainer
+
+object NarpcTestUtils {
+
+    interface TestService {
+        @JsName("empty")
+        suspend fun empty(): Deferred<Unit>
+        @JsName("hello")
+        suspend fun hello(greeting: String): Deferred<String>
+        @JsName("reverse")
+        suspend fun reverse(listToBeReversed: List<SimpleTestItem>): Deferred<List<SimpleTestItem>>
+        @JsName("wrappedHello")
+        suspend fun wrappedHello(greeting: Greeting): Deferred<Greeting>
+        @JsName("sendFile")
+        suspend fun sendFile(file: FileContainer): Deferred<Boolean>
+        @JsName("sendFiles")
+        suspend fun sendFiles(files: List<FileContainer>, firstNumber: Int, secondNumber: Int): Deferred<Int>
+        @JsName("throwUnknownErrorException")
+        suspend fun throwUnknownErrorException(): Deferred<Unit>
+        @JsName("throwCustomException")
+        suspend fun throwCustomException(exceptionCode: Int): Deferred<Unit>
+        @JsName("deferredIntsAsync")
+        fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
+
+        @Serializable
+        data class Greeting(val greeting: String, val recepientIds: List<Int>)
+
+        @Serializable
+        data class SimpleTestItem(val name: String, val numbersList: List<Int>)
+    }
+    fun greetingResponse(greeting: String) = "$greeting to you too"
+
+}
+
+

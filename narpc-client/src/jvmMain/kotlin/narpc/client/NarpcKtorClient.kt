@@ -42,7 +42,7 @@ import kotlin.reflect.jvm.jvmErasure
 class ContinuationClass()
 object NarpcKtorClient {
 
-    private val client by lazy {
+     val client by lazy {
         HttpClient(Apache) {
             engine {
                 connectionRequestTimeout = 0

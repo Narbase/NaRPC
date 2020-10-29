@@ -1,15 +1,22 @@
 package narpc.client
 
-import kotlinx.coroutines.await
+import io.ktor.client.*
+import io.ktor.client.features.*
+import io.ktor.client.features.json.*
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.request.*
+import kotlinx.serialization.*
+import kotlinx.serialization.builtins.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.modules.SerializersModule
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
-import org.w3c.fetch.RequestInit
+import narpc.exceptions.ServerException
 import org.w3c.xhr.FormData
-import kotlin.browser.window
-import kotlin.js.json
+import kotlin.coroutines.Continuation
 
 
 /*
@@ -23,6 +30,13 @@ import kotlin.js.json
 
 object NarpcJsClient {
 
+    val client = HttpClient {
+        install(JsonFeature) {
+            serializer = KotlinxSerializer()
+        }
+    }
+
+
     suspend fun sendRequest(
         endpoint: String,
         methodName: String,
@@ -32,10 +46,12 @@ object NarpcJsClient {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
-                .map { Json.encodeToJsonElement(it) }
+                .map {
+                    serializeArgument(it)
+                }
                 .toTypedArray())
 
-        console.log("sendRequest")
+        console.log("sendRequest\n")
         console.log(dto)
         try {
             return synchronousPost(
@@ -45,7 +61,27 @@ object NarpcJsClient {
                 body = dto
             )
         } catch (t: Throwable) {
+            t.printStackTrace()
             throw t
+        }
+    }
+
+    private fun serializeArgument(arg: Any): JsonElement {
+        return try {
+            console.log("trying to serialize arg $arg \n")
+            if (arg is Continuation<*>) {
+                console.log("\narg is Continuation<*> $arg \n")
+                Json.encodeToJsonElement("{}")
+            } else {
+                val serializer = buildSerializer(arg, SerializersModule { }) // reflection call to get real KClass
+                Json.encodeToJsonElement(serializer, arg)
+            }
+
+        } catch (e: SerializationException) {
+            Json.encodeToJsonElement("{}")
+        } catch (e: Throwable) {
+            e.printStackTrace()
+            Json.encodeToJsonElement("{}}")
         }
     }
 
@@ -59,8 +95,7 @@ object NarpcJsClient {
             it is FileContainer ||
                     (it is Collection<*> && it.isNotEmpty() && it.first() is FileContainer) ||
                     (it is Array<*> && it.isNotEmpty() && it.first() is FileContainer)
-        }.map { Json.encodeToJsonElement(it) }
-            .toTypedArray())
+        }.map { serializeArgument(it) }.toTypedArray())
 
         val formData = FormData()
 
@@ -88,30 +123,27 @@ object NarpcJsClient {
     }
 
 
-    suspend fun <T : Any> synchronousPost(
+    private suspend inline fun <reified T : Any> synchronousPost(
         url: String,
         headers: Map<String, String> = mapOf(),
         body: Any? = null,
         stringify: Boolean = true,
         setContentType: Boolean = true
-    ) = makeSynchronousRequest<T>(
-        "POST", url, headers, body, stringify, setContentType
+    ) = makeSynchronousPostRequest<T>(
+        url, headers, body, stringify, setContentType
     )
 
 
     @Suppress("UnnecessaryVariable")
-    private suspend fun <T : Any> makeSynchronousRequest(
-        requestVerb: String,
+    private suspend inline fun <reified T : Any> makeSynchronousPostRequest(
         url: String,
         headers: Map<String, String>? = null,
-        body: Any? = null,
+        requestBody: Any? = null,
         stringify: Boolean = true,
         setContentType: Boolean = true
     ): T {
 
-        val bodyToSend = body?.let {
-            if (stringify) JSON.stringify(it) else it
-        }
+        console.log("\nmakeSynchronousPostRequest : requestDto = $requestBody\n")
 
 
         val headersPairs = headers?.map { header ->
@@ -125,18 +157,126 @@ object NarpcJsClient {
       }
 */
 
-        val headersJson = json(*headersPairs.toTypedArray())
+        try {
 
-        val httpResponse = window.fetch(
-            url, RequestInit(
-                method = requestVerb,
-                headers = headersJson,
-                body = bodyToSend
-            )
-        ).await()
+            return client.post(url) {
+                headers {
+                    headersPairs.forEach {
+                        append(it.first, it.second)
+                    }
+                }
+//            contentType(ContentType("application", "json"))
+                requestBody?.let {
+                    body = requestBody
+                }
 
-        return httpResponse.json().await().unsafeCast<T>()
+            }
+        } catch (t: Throwable) {
+            t.printStackTrace()
+            if (t is ResponseException) {
+                console.log("caught a response exception\n")
+                throw ServerException(
+                    t.response?.status?.value ?: defaultHttpErrorCode,
+                    t.response?.status?.description ?: defaultHttpErrorMessage,
+                    t.message?:""
+                )
+            } else {
+                throw t
+            }
+        }
+
     }
 
 
 }
+private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
+private const val defaultHttpErrorMessage = ""
+
+
+/***
+ * The following few functions are ripped of ktor's serialization
+ */
+
+@Suppress("UNCHECKED_CAST")
+@OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
+fun buildSerializer(value: Any, module: SerializersModule): KSerializer<Any> {
+    console.log("buildSerializer called\n")
+    return when (value) {
+        is JsonElement -> {
+            console.log("buildSerializer called on value $value which is a JsonElement\n")
+            JsonElement.serializer()
+        }
+        is List<*> -> {
+            console.log("buildSerializer called on value $value which is a List\n")
+            ListSerializer(value.elementSerializer(module))
+        }
+        is Array<*> -> {
+            console.log("buildSerializer called on value $value which is an Array\n")
+            value.firstOrNull()?.let { buildSerializer(it, module) } ?: ListSerializer(String.serializer())
+        }
+        is Set<*> -> {
+            console.log("buildSerializer called on value $value which is a Set\n")
+            SetSerializer(value.elementSerializer(module))
+        }
+        is Map<*, *> -> {
+            console.log("buildSerializer called on value $value which is a Map\n")
+            val keySerializer = value.keys.elementSerializer(module)
+            val valueSerializer = value.values.elementSerializer(module)
+            MapSerializer(keySerializer, valueSerializer)
+        }
+        else -> {
+            console.log("buildSerializer called on value $value which is else\n")
+            module.getContextual(value::class) ?: value::class.serializer()
+        }
+    } as KSerializer<Any>
+}
+
+@OptIn(ExperimentalSerializationApi::class)
+@Suppress("EXPERIMENTAL_API_USAGE_ERROR")
+private fun Collection<*>.elementSerializer(module: SerializersModule): KSerializer<*> {
+    val serializers: List<KSerializer<*>> =
+        filterNotNull().map { buildSerializer(it, module) }.distinctBy { it.descriptor.serialName }
+
+    if (serializers.size > 1) {
+        error(
+            "Serializing collections of different element types is not yet supported. " +
+                    "Selected serializers: ${serializers.map { it.descriptor.serialName }}"
+        )
+    }
+
+    val selected = serializers.singleOrNull() ?: String.serializer()
+
+    if (selected.descriptor.isNullable) {
+        return selected
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    selected as KSerializer<Any>
+
+    if (any { it == null }) {
+        return selected.nullable
+    }
+
+    return selected
+}
+
+@OptIn(InternalSerializationApi::class)
+inline fun <reified T : Any> T.decodeNarpcResponse(): T =
+    if (this is Unit) {
+        console.log("decoding a Unit\n")
+        Unit as T
+    } else {
+//        console.log("are these logs appearing?\n")
+//        this.asDynamic() as JsonElement
+        val deserializer = buildSerializer(this, SerializersModule { })
+        console.log("decoding a non Unit.. ${this::class} to be exact\n")
+        console.log("deserializer ${deserializer.descriptor}\n")
+        val element = this.asDynamic() as JsonElement
+        console.log("element $element is ${element::class}\n")
+        val decoded = Json.decodeFromJsonElement(deserializer, element)
+        console.log("decoded is $decoded which is a ${decoded::class}\n")
+        decoded as T
+    }
+
+
+

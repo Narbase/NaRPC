@@ -1,8 +1,11 @@
 package e2e
 
+import io.ktor.client.request.*
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import narpc.client.NarpcClient
+import narpc.client.NarpcKtorClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseException
 import narpc.exceptions.ServerException
@@ -37,6 +40,17 @@ internal class NarpcTests {
     fun setup() {
         NarpcTestUtils.deleteAllTestFiles()
     }
+
+/*
+    @Test
+    fun emptyTest() = runBlocking {
+        @Serializable
+        class TestResponse(val success: String)
+        val response = NarpcKtorClient.client.get<TestResponse>("https://reqbin.com/echo/get/json")
+        assertTrue { response.success == "true" }
+    }
+*/
+
 
     @Test
     fun emptyResponse_shouldBeReceived_whenCallReturnValueIsUnit() {
@@ -131,7 +145,7 @@ internal class NarpcTests {
     }
 
     private interface PointlessInterface {
-        fun doSomething(i : Int)
+        fun doSomething(i: Int)
     }
 
     @Test
@@ -140,7 +154,7 @@ internal class NarpcTests {
             assertFailsWith(ServerException::class) {
                 try {
 
-                    val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
+                    val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath",)
                     client.doSomething(2)
                 } catch (e: ServerException) {
                     assertTrue { e.httpStatus == 404 }
@@ -151,22 +165,22 @@ internal class NarpcTests {
     }
 
     @Test
-    fun unknownErrorException_shouldBeReceived_whenItIsThrownServerSide(){
+    fun unknownErrorException_shouldBeReceived_whenItIsThrownServerSide() {
         runBlocking {
-            assertFailsWith(UnknownErrorException::class){
+            assertFailsWith(UnknownErrorException::class) {
                 service.throwUnknownErrorException()
             }
         }
     }
 
     @Test
-    fun theErrorCodeUsedInCustomException_shouldBeReceived_whenItIsThrownServerSide(){
+    fun theErrorCodeUsedInCustomException_shouldBeReceived_whenItIsThrownServerSide() {
         runBlocking {
-            assertFailsWith(NarpcBaseException::class){
+            assertFailsWith(NarpcBaseException::class) {
                 val exceptionStatus = 2
                 try {
                     service.throwCustomException(exceptionStatus)
-                }catch (e: NarpcBaseException){
+                } catch (e: NarpcBaseException) {
                     assertTrue { e.status.toIntOrNull() == exceptionStatus }
                     throw e
                 }
@@ -175,7 +189,7 @@ internal class NarpcTests {
     }
 
     @Test
-    fun deferredRPCs_ShouldReturnDeferred_whenCalled(){
+    fun deferredRPCs_ShouldReturnDeferred_whenCalled() {
         runBlocking {
             val results = service.deferredIntsAsync(1, 32).await()
             assertEquals(results, (1..32).toList())

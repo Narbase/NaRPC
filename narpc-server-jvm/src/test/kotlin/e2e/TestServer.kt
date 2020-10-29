@@ -10,11 +10,18 @@ import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.features.*
+import io.ktor.http.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import kotlinx.serialization.Serializable
 import org.slf4j.event.Level
+import java.time.Duration
+
+@Serializable
+data class TestResponse(val success: String)
 
 object TestServer {
     fun run(){
@@ -33,9 +40,38 @@ object TestServer {
         install(CallLogging) {
             level = Level.INFO
         }
+
+        install(CORS) {
+            method(HttpMethod.Options)
+            method(HttpMethod.Put)
+            anyHost()
+            header("Authorization")
+            header("DNT")
+            header("X-CustomHeader")
+            header("Keep-Alive")
+            header("User-Agent")
+            header("X-Requested-With")
+            header("If-Modified-Since")
+            header("Cache-Control")
+            header("Content-Type")
+            header("Content-Range")
+            header("Range")
+            header("Client-Language")
+
+            allowCredentials = true
+            maxAgeInSeconds = Duration.ofDays(1).seconds
+        }
+
         setupAuthenticators("jwt", jwtIssuer, jwtAudience)
 
         routing {
+
+/*
+            post("/ktor_client_test"){
+                println("ktor_client_test was called successfully")
+                call.respond(TestResponse("true"))
+            }
+*/
 
             authenticate("JwtAuth") {
                 post("/test") {

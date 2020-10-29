@@ -58,7 +58,7 @@ object NarpcTestUtils {
         }
 
         override suspend fun hello(greeting: String): String {
-            println(call)
+            println("RemoteTestService.hello: greeting = [${greeting}]")
             return greetingResponse(greeting)
         }
 
