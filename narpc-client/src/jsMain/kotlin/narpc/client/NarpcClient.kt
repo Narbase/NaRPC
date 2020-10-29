@@ -3,12 +3,19 @@ package narpc.client
 import com.narbase.narnic.narpc.cilent.js.Proxy
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import narpc.dto.FileContainer
 import narpc.exceptions.*
 import utils.json
 
 actual object NarpcClient {
-    actual inline fun <reified T : Any> build(endpoint: String, headers: Map<String, String>): T {
+    actual inline fun <reified T : Any> build(
+        endpoint: String,
+        headers: Map<String, String>,
+        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?
+    ): T {
 
         val proxy = Proxy(json { }, json {
             "get" to { target: dynamic, prop: String, receiver: dynamic ->
@@ -37,7 +44,11 @@ actual object NarpcClient {
                         { target, thisArgs, args ->
 
                             val p = GlobalScope.async {
-                                makeCall(endpoint, prop, args, headers)
+                                val json = makeCall(endpoint, prop, args, headers)
+                                val deserializer = deserializerGetter(prop)
+                                deserializer?.let {
+                                    Json.decodeFromJsonElement(deserializer, json as JsonElement)
+                                }?: json
                             }
                             p
 

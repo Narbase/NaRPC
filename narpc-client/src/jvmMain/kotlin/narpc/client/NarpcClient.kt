@@ -4,6 +4,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
@@ -18,7 +19,11 @@ import kotlin.reflect.KClass
 import kotlin.reflect.jvm.javaType
 
 actual object NarpcClient {
-    actual inline fun <reified T : Any> build(endpoint: String, headers: Map<String, String>): T {
+    actual inline fun <reified T : Any> build(
+        endpoint: String,
+        headers: Map<String, String>,
+        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?
+    ): T {
         val serviceClass = T::class
         val classLoader = serviceClass.java.classLoader
         val interfaces = arrayOf(serviceClass.java)

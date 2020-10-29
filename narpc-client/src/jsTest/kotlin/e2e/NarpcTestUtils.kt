@@ -2,6 +2,8 @@ package e2e
 
 import kotlinx.coroutines.Deferred
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
@@ -20,8 +22,24 @@ object NarpcTestUtils {
     }
 
 
-
     interface TestService {
+        companion object{
+            fun functionsReturnsMap(name: String) =
+                when (name) {
+                    "empty" -> Unit.serializer()
+                    "hello" -> String.serializer()
+                    "reverse" -> ListSerializer(SimpleTestItem.serializer())
+                    "wrappedHello" -> Greeting.serializer()
+                    "sendFile" -> Boolean.serializer()
+                    "sendFiles" -> Int.serializer()
+                    "throwUnknownErrorException" -> Unit.serializer()
+                    "throwCustomException" -> Unit.serializer()
+                    "throwExceptionMapExampleException" -> Unit.serializer()
+                    "deferredIntsAsync" -> ListSerializer(Int.serializer())
+                    else -> null
+                }
+        }
+
         @JsName("empty")
         suspend fun empty(): Deferred<Unit>
 

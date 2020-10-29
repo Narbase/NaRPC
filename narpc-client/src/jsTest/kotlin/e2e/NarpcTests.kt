@@ -8,7 +8,6 @@ import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import narpc.client.NarpcClient
-import narpc.client.decodeNarpcResponse
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
 import narpc.exceptions.UnknownErrorException
@@ -26,17 +25,20 @@ internal class NarpcTests {
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
-        ),
-    )
+        )
+    ){
+        NarpcTestUtils.TestService.functionsReturnsMap(it)
+    }
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 
     @Test
     fun emptyResponse_shouldBeReceived_whenCallReturnValueIsUnit() = GlobalScope.promise {
 //        val response = service.empty().await().decodeNarpcResponse() //this is unstable
-        val json = service.empty().await()
-        console.log("json is $json\n")
-        val response = json.decodeNarpcResponse() // but this works somehow. TODO: figure out the difference
+//        val json = service.empty().await()
+        val response = service.empty().await()
+//        console.log("json is $json\n")
+//        val response = json.decodeNarpcResponse() // but this works somehow. TODO: figure out the difference
 //        val jsonElement = service.empty().await().asDynamic() as JsonElement
 //        val response = Json.decodeFromJsonElement(Unit.serializer(),jsonElement)
         assertTrue {
@@ -48,8 +50,8 @@ internal class NarpcTests {
     @Test
     fun greetingResponse_shouldBeReceived_whenHelloIsSent() = GlobalScope.promise {
         val greeting = "Hello"
-        val json = service.hello(greeting).await()
-        val response = Json.decodeFromJsonElement(String.serializer(), json.asDynamic() as JsonElement)
+        val response = service.hello(greeting).await()
+//        val response = Json.decodeFromJsonElement(String.serializer(), json.asDynamic() as JsonElement)
         val other = NarpcTestUtils.greetingResponse(greeting)
         console.log("\n${response}\n$other\n")
         assertTrue {
@@ -61,7 +63,7 @@ internal class NarpcTests {
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
         val greeting = NarpcTestUtils.TestService.Greeting("Hello", listOf(1, 3))
-        val response = service.wrappedHello(greeting).await().decodeNarpcResponse()
+        val response = service.wrappedHello(greeting).await()
 
         console.log("\n${response}\n$greeting\n")
         assertTrue {
@@ -77,7 +79,7 @@ internal class NarpcTests {
             NarpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
             NarpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
         )
-        val response = service.reverse(array).await().decodeNarpcResponse()
+        val response = service.reverse(array).await()
         assertTrue {
             response.equals(array.reversed())
         }
@@ -130,7 +132,7 @@ internal class NarpcTests {
         val greeting = "Hello"
         assertFailsWith(ServerException::class) {
             try {
-                unauthenticatedService.hello(greeting).await().decodeNarpcResponse()
+                unauthenticatedService.hello(greeting).await()
             } catch (e: ServerException) {
                 console.log("did catch a  server exception! What is wrong with you js!!")
                 assertTrue { e.httpStatus == 401 }
@@ -196,9 +198,9 @@ internal class NarpcTests {
 
     @Test
     fun deferredRPCs_ShouldReturnDeferred_whenCalled() = GlobalScope.promise {
-//        val results = service.deferredIntsAsync(1, 32).await().decodeNarpcResponse()
-        val json = service.deferredIntsAsync(1, 32).await() as JsonElement
-        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
+        val results = service.deferredIntsAsync(1, 32).await()
+//        val json = service.deferredIntsAsync(1, 32).await() as JsonElement
+//        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
         console.log("results: $results are ${results::class}")
         assertEquals(results, (1..32).toList())
     }

@@ -260,6 +260,7 @@ private fun Collection<*>.elementSerializer(module: SerializersModule): KSeriali
     return selected
 }
 
+/*
 @OptIn(InternalSerializationApi::class)
 inline fun <reified T : Any> T.decodeNarpcResponse(): T =
     if (this is Unit) {
@@ -277,6 +278,7 @@ inline fun <reified T : Any> T.decodeNarpcResponse(): T =
         console.log("decoded is $decoded which is a ${decoded::class}\n")
         decoded as T
     }
+*/
 
 
 
