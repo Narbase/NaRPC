@@ -3,12 +3,10 @@ package e2e
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import narpc.client.NarpcClient
 import narpc.client.decodeNarpcResponse
 import narpc.exceptions.NarpcBaseException
@@ -19,9 +17,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-@Serializable
-data class TestResponse(val success: String)
 
+/***
+ * Before running these tests. run the main function in narpc-serer-jvm test Main.kt to allow the testing server to run
+ */
 internal class NarpcTests {
     val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
@@ -31,24 +30,6 @@ internal class NarpcTests {
     )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
-
-/*
-    @Test
-    fun emptyTest() = GlobalScope.promise {
-        val client = HttpClient{
-            install(JsonFeature) {
-                serializer = KotlinxSerializer()
-            }
-        }
-        val response = client.post<TestResponse>("http://localhost:8010/ktor_client_test"){
-            contentType(ContentType.Application.Json)
-        }
-        assertTrue { response.success == "true" }
-    }.then({}, {
-        it.printStackTrace()
-        throw it
-    })
-*/
 
 
     @Test

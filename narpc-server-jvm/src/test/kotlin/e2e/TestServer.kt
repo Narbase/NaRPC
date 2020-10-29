@@ -3,15 +3,14 @@ package jvm_library_test.e2e
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTVerifier
 import com.auth0.jwt.algorithms.Algorithm
-import e2e.NarpcTestUtils
 import com.narbase.narpc.server.NarpcKtorHandler
 import com.narbase.narpc.server.NarpcServer
+import e2e.NarpcTestUtils
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.features.*
 import io.ktor.http.*
-import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
@@ -19,9 +18,6 @@ import io.ktor.server.netty.*
 import kotlinx.serialization.Serializable
 import org.slf4j.event.Level
 import java.time.Duration
-
-@Serializable
-data class TestResponse(val success: String)
 
 object TestServer {
     fun run(){
@@ -65,13 +61,6 @@ object TestServer {
         setupAuthenticators("jwt", jwtIssuer, jwtAudience)
 
         routing {
-
-/*
-            post("/ktor_client_test"){
-                println("ktor_client_test was called successfully")
-                call.respond(TestResponse("true"))
-            }
-*/
 
             authenticate("JwtAuth") {
                 post("/test") {

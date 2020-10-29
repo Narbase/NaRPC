@@ -1,11 +1,8 @@
 package e2e
 
-import io.ktor.client.request.*
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
 import narpc.client.NarpcClient
-import narpc.client.NarpcKtorClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseException
 import narpc.exceptions.ServerException
@@ -40,16 +37,6 @@ internal class NarpcTests {
     fun setup() {
         NarpcTestUtils.deleteAllTestFiles()
     }
-
-/*
-    @Test
-    fun emptyTest() = runBlocking {
-        @Serializable
-        class TestResponse(val success: String)
-        val response = NarpcKtorClient.client.get<TestResponse>("https://reqbin.com/echo/get/json")
-        assertTrue { response.success == "true" }
-    }
-*/
 
 
     @Test
