@@ -6,6 +6,7 @@ import jvm_library_test.e2e.TestServer
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
@@ -50,12 +51,31 @@ object NarpcTestUtils {
         suspend fun throwCustomException(exceptionCode: Int)
         suspend fun throwExceptionMapExampleException(message: String)
         fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
+        suspend fun getFirstEnum(): TestEnum
+        suspend fun getAnimals(animals: String): List<Animal>
 
         @Serializable
         data class Greeting(val greeting: String, val recepientIds: List<Int>)
 
         @Serializable
         data class SimpleTestItem(val name: String, val numbersList: List<Int>)
+
+        enum class TestEnum{First, Second, Third}
+
+        @Serializable
+        abstract class Animal {
+            abstract val name: String
+        }
+
+        @Serializable
+        @SerialName("mammal")
+        class Mammal(override val name: String, val legs: Int) : Animal()
+
+        @Serializable
+        @SerialName("bird")
+        class Bird(override val name: String, val wings: Int) : Animal()
+
+
     }
 
 
@@ -141,7 +161,26 @@ object NarpcTestUtils {
         override fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>> = GlobalScope.async {
             (start..end).toList()
         }
+
+        override suspend fun getFirstEnum(): TestService.TestEnum {
+            return TestService.TestEnum.First
+        }
+
+        override suspend fun getAnimals(animals: String): List<TestService.Animal> {
+            return animals.split(",").mapNotNull {
+                if (it.first() == 'm'){
+                    val legs = it.last().toString().toInt()
+                   TestService.Mammal(it.drop(1).dropLast(1), legs)
+                }else if (it.first() == 'b'){
+                    val wings = it.last().toString().toInt()
+                   TestService.Bird(it.drop(1).dropLast(1), wings)
+                }else{
+                    null
+                }
+            }
+        }
     }
+
 
     fun greetingResponse(greeting: String) = "$greeting to you too"
 }

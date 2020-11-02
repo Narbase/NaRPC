@@ -1,7 +1,15 @@
 package e2e
 
+import e2e.NarpcTestUtils.TestService.*
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.serializer
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
@@ -21,12 +29,32 @@ internal class NarpcTests {
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer ${getToken("test_user")}"
-        )
+        ),
+        clientConfig = Json {
+            //copy from DefaultJson
+            isLenient = false
+            ignoreUnknownKeys = false
+            allowSpecialFloatingPointValues = true
+            useArrayPolymorphism = false
+
+            serializersModule = SerializersModule {
+                polymorphic(Animal::class) {
+                    subclass(
+                        Mammal::class,
+                        Mammal.serializer()
+                    )
+                    subclass(
+                        Bird::class,
+                        Bird.serializer()
+                    )
+                }
+            }
+        }
+
     )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     val DIVISION_BY_ZERO_STATUS = "DIVISION_BY_ZERO_STATUS"
-
 
 
     companion object {
@@ -200,6 +228,52 @@ internal class NarpcTests {
         runBlocking {
             val results = service.deferredIntsAsync(1, 32).await()
             assertEquals(results, (1..32).toList())
+        }
+    }
+
+    @Test
+    fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() {
+        runBlocking {
+            val enum = service.getFirstEnum()
+            assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
+        }
+    }
+
+    @Test
+    fun testPolymorphicSerialization() {
+        val animals = listOf<Animal>(Mammal("lion", 4), Mammal("Human", 2))
+        val format = Json {
+            serializersModule = SerializersModule {
+                polymorphic(Animal::class) {
+                    subclass(Mammal::class, Mammal.serializer())
+                    subclass(Bird::class, Bird.serializer())
+                }
+            }
+        }
+        println(format.encodeToJsonElement(animals))
+        println(format.encodeToJsonElement(ListSerializer(Animal.serializer()), animals))
+        println(format.encodeToJsonElement(ListSerializer(Mammal.serializer()), animals as List<Mammal>))
+        assertTrue { true }
+    }
+
+    @Test
+    fun listOfASingleSubType_ShouldBeParsedCorrectly_whenServerReturnsAListOfBaseType() {
+        runBlocking {
+            val animals = service.getAnimals("mLion4,mHuman2")
+            assertTrue { animals.size == 2 }
+            assertTrue { animals.first() is Mammal && (animals.first() as Mammal).legs == 4 }
+            assertTrue { animals.last() is Mammal && (animals.last() as Mammal).legs == 2 }
+        }
+    }
+
+    @Test
+    fun listOfDifferentSubTypes_ShouldBeParsedCorrectly_whenServerReturnsAListOfBaseType() {
+        //This is failing due to an issue with kotlinx serialization
+        runBlocking {
+            val animals = service.getAnimals("mLion4,bEagle2,mHuman2")
+            assertTrue { animals.size == 3 }
+            assertTrue { animals.first() is Mammal && (animals.first() as Mammal).legs == 4 }
+            assertTrue { animals[1] is Bird && (animals[1] as Bird).wings == 2 }
         }
     }
 

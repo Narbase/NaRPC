@@ -40,9 +40,9 @@ import kotlin.reflect.jvm.jvmErasure
 
 @Serializable
 class ContinuationClass()
-object NarpcKtorClient {
+class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
 
-     val client by lazy {
+    val client by lazy {
         HttpClient(Apache) {
             engine {
                 connectionRequestTimeout = 0
@@ -51,19 +51,15 @@ object NarpcKtorClient {
 
             }
             install(JsonFeature) {
-                serializer = KotlinxSerializer()
-/*
-                    GsonSerializer {
-                        serializeNulls()
-                        disableHtmlEscaping()
-                    }
-*/
+                serializer = KotlinxSerializer(clientConfig)
             }
         }
     }
 
-    private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
-    private const val defaultHttpErrorMessage = ""
+    companion object {
+        private const val defaultHttpErrorMessage = ""
+        private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
+    }
 
     @InternalSerializationApi
     suspend fun sendRequest(
@@ -116,15 +112,16 @@ object NarpcKtorClient {
 
     private fun serializeArgument(arg: Any): JsonElement {
         return try {
-    //                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
+            //                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
             val serializer = serializerForSending(
                 arg,
-                SerializersModule { }) as KSerializer<Any> // reflection call to get real KClass
+                clientConfig.serializersModule
+            ) as KSerializer<Any> // reflection call to get real KClass
             Json.encodeToJsonElement(serializer, arg)
 
         } catch (e: UnsupportedOperationException) {
             if (arg is Continuation<*>) {
-    //                        val serial = serializer<Continuation<Unit>>()
+                //                        val serial = serializer<Continuation<Unit>>()
 
                 Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
             } else {
@@ -133,7 +130,7 @@ object NarpcKtorClient {
             }
         } catch (e: SerializationException) {
             if (arg is Continuation<*>) {
-    //                        val serial = serializer<Continuation<Unit>>()
+                //                        val serial = serializer<Continuation<Unit>>()
                 Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
             } else {
                 val serial = serializer(arg::class.java)
@@ -231,7 +228,7 @@ object NarpcKtorClient {
  * The following few functions are ripped of ktor's serialization
  */
 
-public fun serializerForSending(value: Any): KSerializer<Any> = serializerForSending(value, SerializersModule { }) as KSerializer<Any>
+//public fun serializerForSending(value: Any): KSerializer<Any> = serializerForSending(value, SerializersModule { }) as KSerializer<Any>
 
 @OptIn(InternalSerializationApi::class)
 public fun serializerForSending(value: Any, module: SerializersModule): KSerializer<*> = when (value) {

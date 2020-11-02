@@ -1,6 +1,8 @@
 package com.narbase.narpc.server
 
 import kotlinx.coroutines.Deferred
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.modules.SerializersModule
@@ -17,26 +19,33 @@ import kotlin.coroutines.CoroutineContext
 
 
 @Suppress("FunctionName")
-inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, service::class.java)
+inline fun <reified C : Any> NarpcServer(service: C,serializersModule: SerializersModule= SerializersModule {  }) = NarpcServer(service, service::class.java, serializersModule)
 
-class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
+class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val module: SerializersModule = SerializersModule {  }) {
 //    var gson = Gson()
 
+    val format = Json { this.serializersModule = module }
+
+    @OptIn(ExperimentalSerializationApi::class)
     suspend fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
+        val returnType = method.genericReturnType
         val results = requestDto.args.mapIndexed { index, any ->
             deserializeArgument(typesList, index, any)
 //            gson.fromJson(any, type)
         }.toTypedArray()
 
         return try {
+//            val result = returnType.javaClass.cast(method.invoke(service, *results))
             val result = method.invoke(service, *results)
             val res = if (result is Deferred<*>) result.await()
             else result
 
             NarpcResponseDto(res?.let {
-                Json.encodeToJsonElement(serializerForSending(res), res)
+                val serializer = serializerForSending(res, module) as KSerializer<Any>
+//                format.encodeToJsonElement(serializer(returnType), res)
+                format.encodeToJsonElement(serializer, res)
             })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
@@ -63,11 +72,11 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         } else {
             try {
                 val serializer = serializer(type)
-                Json.decodeFromJsonElement(serializer, any)
+                format.decodeFromJsonElement(serializer, any)
             } catch (t: Throwable) {
                 t.printStackTrace()
-                val serializer = serializerForSending(any, SerializersModule { })
-                Json.decodeFromJsonElement(serializer, any)
+                val serializer = serializerForSending(any, module)
+                format.decodeFromJsonElement(serializer, any)
             }
         }
     }
@@ -127,7 +136,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
                     if (arg is JsonElement) deserializeArgument(typesList, index, arg)
                     else {
                         val serializer = serializer(type)
-                        Json.decodeFromJsonElement(serializer, arg as JsonElement)
+                        format.decodeFromJsonElement(serializer, arg as JsonElement)
                     }
                 }
             }
@@ -135,7 +144,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { Json.encodeToJsonElement(serializerForSending(result), result) })
+            NarpcResponseDto(result?.let { format.encodeToJsonElement(serializerForSending(result, module) as KSerializer<Any>, result) })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         }

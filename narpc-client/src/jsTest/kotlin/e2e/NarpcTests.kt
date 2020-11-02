@@ -1,12 +1,15 @@
 package e2e
 
+import e2e.NarpcTestUtils.TestService.Bird
+import e2e.NarpcTestUtils.TestService.Mammal
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.serializer
 import narpc.client.NarpcClient
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
@@ -21,14 +24,36 @@ import kotlin.test.assertTrue
  * Before running these tests. run the main function in narpc-serer-jvm test Main.kt to allow the testing server to run
  */
 internal class NarpcTests {
+    @OptIn(InternalSerializationApi::class)
     val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
-        )
-    ){
-        NarpcTestUtils.TestService.functionsReturnsMap(it)
-    }
+        ),
+        {
+            NarpcTestUtils.TestService.functionsReturnsMap(it)
+        },
+        Json {
+            //copy from DefaultJson
+            isLenient = false
+            ignoreUnknownKeys = false
+            allowSpecialFloatingPointValues = true
+            useArrayPolymorphism = false
+
+            serializersModule = SerializersModule {
+                polymorphic(NarpcTestUtils.TestService.Animal::class) {
+                    subclass(
+                        Mammal::class,
+                        Mammal::class.serializer()
+                    )
+                    subclass(
+                        Bird::class,
+                        Bird::class.serializer()
+                    )
+                }
+            }
+        }
+    )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 
@@ -203,6 +228,20 @@ internal class NarpcTests {
 //        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
         console.log("results: $results are ${results::class}")
         assertEquals(results, (1..32).toList())
+    }
+
+    @Test
+    fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() = GlobalScope.promise {
+        val enum = service.getFirstEnum().await()
+        assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
+    }
+
+    @Test
+    fun subTypes_ShouldBeParsedCorrectly_whenServerReturnsAListOfBaseType() = GlobalScope.promise {
+        val animals = service.getAnimals("mLion4,bEagle2,mHuman2").await()
+        assertTrue { animals.size == 3 }
+        assertTrue { animals.first() is Mammal && (animals.first() as Mammal).legs == 4 }
+        assertTrue { animals[1] is Bird && (animals[1] as Bird).wings == 2 }
     }
 
 }

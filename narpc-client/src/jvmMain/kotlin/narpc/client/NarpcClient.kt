@@ -1,5 +1,6 @@
 package narpc.client
 
+import io.ktor.client.features.json.serializer.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -22,12 +23,14 @@ actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
         headers: Map<String, String>,
-        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?
+        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?,
+        clientConfig: Json
     ): T {
         val serviceClass = T::class
         val classLoader = serviceClass.java.classLoader
         val interfaces = arrayOf(serviceClass.java)
-        val proxy = NarpcProxyListener(endpoint, serviceClass, headers)
+        val narpcKtorClient = NarpcKtorClient(clientConfig)
+        val proxy = NarpcProxyListener(endpoint, serviceClass, headers, narpcKtorClient)
         return Proxy.newProxyInstance(classLoader, interfaces, proxy) as T
     }
 
@@ -38,7 +41,8 @@ actual object NarpcClient {
 class NarpcProxyListener<T : Any>(
     private val endpoint: String,
     private val service: KClass<T>,
-    val globalHeaders: Map<String, String>
+    val globalHeaders: Map<String, String>,
+    val narpcKtorClient: NarpcKtorClient
 ) : InvocationHandler {
     override fun invoke(proxy: Any, method: Method, args: Array<Any>): Any {
         return runBlocking {
@@ -59,9 +63,9 @@ class NarpcProxyListener<T : Any>(
             firstArgument?.rawType == List::class.java && firstArgument.actualTypeArguments.first() == FileContainer::class.java
         println("method: $methodName, args: ${args.joinToString()}")
         val jsonValue = if (firstArgumentIsFile || firstArgumentIsFileList) {
-            NarpcKtorClient.sendMultipartRequest(endpoint, methodName, args, globalHeaders)
+            narpcKtorClient.sendMultipartRequest(endpoint, methodName, args, globalHeaders)
         } else {
-            NarpcKtorClient.sendRequest(endpoint, methodName, args, globalHeaders)
+            narpcKtorClient.sendRequest(endpoint, methodName, args, globalHeaders)
         }
 
         val nrpcResponse = Json.decodeFromString<NarpcResponseDto>(jsonValue)

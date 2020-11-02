@@ -4,6 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.features.json.*
 import io.ktor.client.features.json.serializer.*
+import io.ktor.client.features.json.serializer.KotlinxSerializer.Companion.DefaultJson
 import io.ktor.client.request.*
 import kotlinx.serialization.*
 import kotlinx.serialization.builtins.*
@@ -28,11 +29,11 @@ import kotlin.coroutines.Continuation
  * On: 2020/09/18.
  */
 
-object NarpcJsClient {
+class NarpcJsClient(clientConfig: Json?) {
 
     val client = HttpClient {
         install(JsonFeature) {
-            serializer = KotlinxSerializer()
+            serializer = KotlinxSerializer(clientConfig?: DefaultJson)
         }
     }
 
@@ -178,7 +179,7 @@ object NarpcJsClient {
                 throw ServerException(
                     t.response?.status?.value ?: defaultHttpErrorCode,
                     t.response?.status?.description ?: defaultHttpErrorMessage,
-                    t.message?:""
+                    t.message ?: ""
                 )
             } else {
                 throw t
@@ -189,6 +190,7 @@ object NarpcJsClient {
 
 
 }
+
 private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
 private const val defaultHttpErrorMessage = ""
 

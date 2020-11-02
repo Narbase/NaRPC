@@ -6,6 +6,7 @@ import kotlinx.coroutines.async
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.decodeFromJsonElement
 import narpc.dto.FileContainer
 import narpc.exceptions.*
 import utils.json
@@ -14,50 +15,35 @@ actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
         headers: Map<String, String>,
-        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?
+        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?,
+        clientConfig: Json
     ): T {
 
         val proxy = Proxy(json { }, json {
-            "get" to { target: dynamic, prop: String, receiver: dynamic ->
+            "get" to { _: dynamic, prop: String, _: dynamic ->
                 console.log("Inside get $prop\n")
                 val pr = Proxy({}, json {
-
-                    val applyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Unit =
-                        { target: dynamic, thisArgs: dynamic, args: Array<Any> ->
-                            console.log("Inside applyFun $prop")
-//                            makeCall(endpoint, prop, args)
-
-                        }
-
-                    val suspendApplyFun: suspend (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Unit =
-                        { target: dynamic, thisArgs: dynamic, args: Array<Any> ->
-                            console.log("Inside applyFun ${prop}")
-                        }
-
-                    val asyncApplyFun: suspend (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Unit =
-                        { target: dynamic, thisArgs: dynamic, args: Array<Any> ->
-                            console.log("Inside asyncApplyFun $prop")
-//                            makeCall(endpoint, prop, args)
-                        }
 
                     val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Any =
                         { target, thisArgs, args ->
 
+                            val narpcJsClient = NarpcJsClient(clientConfig)
+
                             val p = GlobalScope.async {
-                                val json = makeCall(endpoint, prop, args, headers)
-                                val deserializer = deserializerGetter(prop)
-                                deserializer?.let {
-                                    Json.decodeFromJsonElement(deserializer, json as JsonElement)
-                                }?: json
+                                val json = makeCall(endpoint, prop, args, headers, narpcJsClient)
+                                try {
+                                    val deserializer = deserializerGetter(prop)
+                                    deserializer?.let {
+                                        Json.decodeFromJsonElement(deserializer, json as JsonElement)
+                                    }?: Json.decodeFromJsonElement(json as JsonElement)
+                                }catch (e: Exception){
+                                    console.log(e.stackTraceToString())
+                                    json
+                                }
                             }
                             p
 
                         }
-
-//                   console.log(applyFun)
-                    console.log(suspendApplyFun)
-//                   console.log(asyncApplyFun)
-//                   console.log(callAsyncApplyFun)
 
                     "apply" to callAsyncApplyFun
                 })
@@ -76,16 +62,17 @@ actual object NarpcClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        headers: Map<String, String>
+        headers: Map<String, String>,
+        narpcJsClient: NarpcJsClient
     ): Any {
         console.log("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}], headers = [${headers}]\n")
         val firstArgumentIsFile = args.firstOrNull() is FileContainer
         val firstArgumentIsFileArray = (args.firstOrNull() as? Array<*>)?.firstOrNull() is FileContainer
         val firstArgumentIsFileCollection = (args.firstOrNull() as? Collection<*>)?.firstOrNull() is FileContainer
         val nrpcResponse = if (firstArgumentIsFile || firstArgumentIsFileArray || firstArgumentIsFileCollection) {
-            NarpcJsClient.sendMultipartRequest(endpoint, methodName, args, headers)
+            narpcJsClient.sendMultipartRequest(endpoint, methodName, args, headers)
         } else {
-            NarpcJsClient.sendRequest(endpoint, methodName, args, headers)
+            narpcJsClient.sendRequest(endpoint, methodName, args, headers)
         }
 
         if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS) {
