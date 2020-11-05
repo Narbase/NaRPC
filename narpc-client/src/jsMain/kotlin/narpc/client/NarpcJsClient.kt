@@ -2,16 +2,9 @@ package narpc.client
 
 import io.ktor.client.*
 import io.ktor.client.features.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
-import io.ktor.client.features.json.serializer.KotlinxSerializer.Companion.DefaultJson
 import io.ktor.client.request.*
-import kotlinx.serialization.*
-import kotlinx.serialization.builtins.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.modules.SerializersModule
+import io.ktor.content.*
+import io.ktor.http.*
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
@@ -29,14 +22,11 @@ import kotlin.coroutines.Continuation
  * On: 2020/09/18.
  */
 
-class NarpcJsClient(clientConfig: Json?) {
+class NarpcJsClient {
 
-    val client = HttpClient {
-        install(JsonFeature) {
-            serializer = KotlinxSerializer(clientConfig?: DefaultJson)
-        }
-    }
+    val client = HttpClient {}
 
+    class EmptyClass
 
     suspend fun sendRequest(
         endpoint: String,
@@ -47,26 +37,46 @@ class NarpcJsClient(clientConfig: Json?) {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
-                .map {
-                    serializeArgument(it)
-                }
+                .map { if (it is Continuation<*>) EmptyClass() else it }
+//                .map {
+//                    serializeArgument(it)
+//                }
                 .toTypedArray())
 
         console.log("sendRequest\n")
+        console.log("requestArgs: ${args.joinToString { "${it::class.simpleName}" }}\n")
+        console.log("getContinuation: ${args.any { it is Continuation<*> }}\n")
         console.log(dto)
+        val text = JSON.stringify(dto)
+        console.log("serialized NarpcClientRequestDto is $text\n")
+        val body = TextContent(text, ContentType.Application.Json)
+        console.log(body)
+
         try {
-            return synchronousPost(
+            val json: String = synchronousPost(
                 endpoint,
                 headers = headers,
 //                    headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),
-                body = dto
+                body = body
             )
+
+            console.log(json)
+            console.log("\n received json as ${json}\n")
+            StringBuilder(json)
+            val o = json.quoteString()
+//            val o = json.escapeIfNeeded()
+            console.log(o)
+            console.log("\n processed json as $o\n")
+            val response: NarpcResponseDto = JSON.parse(json)
+            console.log("\n parsed response is $response\n")
+            return response
         } catch (t: Throwable) {
             t.printStackTrace()
             throw t
         }
     }
 
+    /*
     private fun serializeArgument(arg: Any): JsonElement {
         return try {
             console.log("trying to serialize arg $arg \n")
@@ -85,6 +95,7 @@ class NarpcJsClient(clientConfig: Json?) {
             Json.encodeToJsonElement("{}}")
         }
     }
+*/
 
     suspend fun sendMultipartRequest(
         endpoint: String,
@@ -96,7 +107,9 @@ class NarpcJsClient(clientConfig: Json?) {
             it is FileContainer ||
                     (it is Collection<*> && it.isNotEmpty() && it.first() is FileContainer) ||
                     (it is Array<*> && it.isNotEmpty() && it.first() is FileContainer)
-        }.map { serializeArgument(it) }.toTypedArray())
+        }
+//            .map { serializeArgument(it) }
+            .toTypedArray())
 
         val formData = FormData()
 
@@ -118,7 +131,6 @@ class NarpcJsClient(clientConfig: Json?) {
             headers = headers,
 //                headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),//Todo: why was this commented out?
             body = formData,
-            stringify = false,
             setContentType = false
         )
     }
@@ -128,10 +140,9 @@ class NarpcJsClient(clientConfig: Json?) {
         url: String,
         headers: Map<String, String> = mapOf(),
         body: Any? = null,
-        stringify: Boolean = true,
         setContentType: Boolean = true
     ) = makeSynchronousPostRequest<T>(
-        url, headers, body, stringify, setContentType
+        url, headers, body, setContentType
     )
 
 
@@ -140,7 +151,6 @@ class NarpcJsClient(clientConfig: Json?) {
         url: String,
         headers: Map<String, String>? = null,
         requestBody: Any? = null,
-        stringify: Boolean = true,
         setContentType: Boolean = true
     ): T {
 
@@ -150,9 +160,11 @@ class NarpcJsClient(clientConfig: Json?) {
         val headersPairs = headers?.map { header ->
             header.key to header.value
         }?.toMutableList() ?: mutableListOf()
+/*
         if (setContentType) {
             headersPairs.add("Content-Type" to "application/json")
         }
+*/
         /*      if (requestVerb == "POST") {
           "Client-Language" to ServerCaller.clientLanguageString()
       }
@@ -191,6 +203,7 @@ class NarpcJsClient(clientConfig: Json?) {
 
 }
 
+
 private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
 private const val defaultHttpErrorMessage = ""
 
@@ -199,6 +212,7 @@ private const val defaultHttpErrorMessage = ""
  * The following few functions are ripped of ktor's serialization
  */
 
+/*
 @Suppress("UNCHECKED_CAST")
 @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
 fun buildSerializer(value: Any, module: SerializersModule): KSerializer<Any> {
@@ -261,6 +275,7 @@ private fun Collection<*>.elementSerializer(module: SerializersModule): KSeriali
 
     return selected
 }
+*/
 
 /*
 @OptIn(InternalSerializationApi::class)
@@ -284,3 +299,9 @@ inline fun <reified T : Any> T.decodeNarpcResponse(): T =
 
 
 
+
+fun String.quoteString() = buildString {
+    append("\"")
+    append(this@quoteString)
+    append("\"")
+}

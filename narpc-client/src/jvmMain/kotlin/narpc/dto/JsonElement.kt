@@ -15,4 +15,6 @@ actual class NarpcResponseDto(
 )
 
 @Serializable
-actual class NarpcServerRequestDto(val functionName: String, val args: List<JsonElement>)
+actual class NarpcClientRequestDto(val functionName: String, val args: Array<JsonElement>)
+//actual class NarpcServerRequestDto(val functionName: String, val args: List<JsonElement>)
+//

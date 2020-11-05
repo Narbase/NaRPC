@@ -5,11 +5,6 @@ import e2e.NarpcTestUtils.TestService.Mammal
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.serializer
 import narpc.client.NarpcClient
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
@@ -24,36 +19,14 @@ import kotlin.test.assertTrue
  * Before running these tests. run the main function in narpc-serer-jvm test Main.kt to allow the testing server to run
  */
 internal class NarpcTests {
-    @OptIn(InternalSerializationApi::class)
     val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
-        ),
-        {
-            NarpcTestUtils.TestService.functionsReturnsMap(it)
-        },
-        Json {
-            //copy from DefaultJson
-            isLenient = false
-            ignoreUnknownKeys = false
-            allowSpecialFloatingPointValues = true
-            useArrayPolymorphism = false
-
-            serializersModule = SerializersModule {
-                polymorphic(NarpcTestUtils.TestService.Animal::class) {
-                    subclass(
-                        Mammal::class,
-                        Mammal::class.serializer()
-                    )
-                    subclass(
-                        Bird::class,
-                        Bird::class.serializer()
-                    )
-                }
-            }
-        }
-    )
+        )
+    ) {
+        NarpcTestUtils.TestService.functionsReturnsMap(it)
+    }
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 
@@ -87,26 +60,26 @@ internal class NarpcTests {
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
-        val greeting = NarpcTestUtils.TestService.Greeting("Hello", listOf(1, 3))
+        val greeting = NarpcTestUtils.TestService.Greeting("Hello", arrayOf(1, 3))
         val response = service.wrappedHello(greeting).await()
 
         console.log("\n${response}\n$greeting\n")
         assertTrue {
-            response == greeting
+            greeting == response
         }
     }
 
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingListsOfItems() = GlobalScope.promise {
-        val array = listOf(
-            NarpcTestUtils.TestService.SimpleTestItem("item_1", listOf(1, 2)),
-            NarpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
-            NarpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
+        val array = arrayOf(
+            NarpcTestUtils.TestService.SimpleTestItem("item_1", arrayOf(1, 2)),
+            NarpcTestUtils.TestService.SimpleTestItem("item_2", arrayOf(2, 3)),
+            NarpcTestUtils.TestService.SimpleTestItem("item_3", arrayOf(3, 4))
         )
         val response = service.reverse(array).await()
         assertTrue {
-            response.equals(array.reversed())
+            response.contentDeepEquals(array.reversed().toTypedArray())
         }
     }
 
@@ -227,13 +200,25 @@ internal class NarpcTests {
 //        val json = service.deferredIntsAsync(1, 32).await() as JsonElement
 //        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
         console.log("results: $results are ${results::class}")
-        assertEquals(results, (1..32).toList())
+        assertTrue{
+            results.contentDeepEquals((1..32).toList().toTypedArray())
+        }
     }
 
     @Test
     fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() = GlobalScope.promise {
         val enum = service.getFirstEnum().await()
         assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
+    }
+
+    @Test
+    fun enumTest(){
+        val nameTest = NarpcTestUtils.TestService.TestEnum.values().firstOrNull { it.name == "First" }
+        val stringTest = NarpcTestUtils.TestService.TestEnum.values().firstOrNull { it.toString() == "First" }
+        assertTrue { nameTest == NarpcTestUtils.TestService.TestEnum.First }
+        assertTrue { stringTest == NarpcTestUtils.TestService.TestEnum.First }
+        val valueOfTest = NarpcTestUtils.TestService.TestEnum.valueOf("First")
+        assertTrue { valueOfTest == NarpcTestUtils.TestService.TestEnum.First }
     }
 
     @Test

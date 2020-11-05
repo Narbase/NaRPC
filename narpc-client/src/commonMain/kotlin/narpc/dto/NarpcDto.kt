@@ -1,7 +1,7 @@
 package narpc.dto
 
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonElement
+//import kotlinx.serialization.Serializable
+//import kotlinx.serialization.json.JsonElement
 
 
 /*
@@ -14,10 +14,10 @@ import kotlinx.serialization.json.JsonElement
  */
 
 @Suppress("unused", "ArrayInDataClass")
-@Serializable
-data class NarpcClientRequestDto(val functionName: String, val args: Array<JsonElement>)
+//@Serializable
+expect class NarpcClientRequestDto
 
 
-expect class NarpcServerRequestDto
+//expect class NarpcServerRequestDto
 
 expect class NarpcResponseDto

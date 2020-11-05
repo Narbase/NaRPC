@@ -43,22 +43,58 @@ object NarpcTestUtils {
     interface TestService {
         suspend fun empty()
         suspend fun hello(greeting: String): String
-        suspend fun reverse(listToBeReversed: List<SimpleTestItem>): List<SimpleTestItem>
+        suspend fun reverse(listToBeReversed: Array<SimpleTestItem>): Array<SimpleTestItem>
         suspend fun wrappedHello(greeting: Greeting): Greeting
         suspend fun sendFile(file: FileContainer): Boolean
         suspend fun sendFiles(files: List<FileContainer>, firstNumber: Int, secondNumber: Int): Int
         suspend fun throwUnknownErrorException()
         suspend fun throwCustomException(exceptionCode: Int)
         suspend fun throwExceptionMapExampleException(message: String)
-        fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
+        fun deferredIntsAsync(start: Int, end: Int): Deferred<Array<Int>>
         suspend fun getFirstEnum(): TestEnum
-        suspend fun getAnimals(animals: String): List<Animal>
+        suspend fun getAnimals(animals: String): Array<Animal>
 
         @Serializable
-        data class Greeting(val greeting: String, val recepientIds: List<Int>)
+        data class Greeting(val greeting: String, val recipientIds: Array<Int>) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as Greeting
+
+                if (greeting != other.greeting) return false
+                if (!recipientIds.contentEquals(other.recipientIds)) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = greeting.hashCode()
+                result = 31 * result + recipientIds.contentHashCode()
+                return result
+            }
+        }
 
         @Serializable
-        data class SimpleTestItem(val name: String, val numbersList: List<Int>)
+        data class SimpleTestItem(val name: String, val numbersList: Array<Int>) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as SimpleTestItem
+
+                if (name != other.name) return false
+                if (!numbersList.contentEquals(other.numbersList)) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = name.hashCode()
+                result = 31 * result + numbersList.contentHashCode()
+                return result
+            }
+        }
 
         enum class TestEnum{First, Second, Third}
 
@@ -95,8 +131,8 @@ object NarpcTestUtils {
             return greetingResponse(greeting)
         }
 
-        override suspend fun reverse(listToBeReversed: List<TestService.SimpleTestItem>): List<TestService.SimpleTestItem> {
-            return listToBeReversed.reversed()
+        override suspend fun reverse(listToBeReversed: Array<TestService.SimpleTestItem>): Array<TestService.SimpleTestItem> {
+            return listToBeReversed.reversed().toTypedArray()
         }
 
         override suspend fun wrappedHello(greeting: TestService.Greeting): TestService.Greeting {
@@ -158,15 +194,15 @@ object NarpcTestUtils {
             throw ExceptionMapExampleException(message)
         }
 
-        override fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>> = GlobalScope.async {
-            (start..end).toList()
+        override fun deferredIntsAsync(start: Int, end: Int): Deferred<Array<Int>> = GlobalScope.async {
+            (start..end).toList().toTypedArray()
         }
 
         override suspend fun getFirstEnum(): TestService.TestEnum {
             return TestService.TestEnum.First
         }
 
-        override suspend fun getAnimals(animals: String): List<TestService.Animal> {
+        override suspend fun getAnimals(animals: String): Array<TestService.Animal> {
             return animals.split(",").mapNotNull {
                 if (it.first() == 'm'){
                     val legs = it.last().toString().toInt()
@@ -177,7 +213,7 @@ object NarpcTestUtils {
                 }else{
                     null
                 }
-            }
+            }.toTypedArray()
         }
     }
 

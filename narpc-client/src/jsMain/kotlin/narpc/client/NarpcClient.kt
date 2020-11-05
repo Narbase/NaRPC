@@ -1,22 +1,19 @@
 package narpc.client
 
 import com.narbase.narnic.narpc.cilent.js.Proxy
+import io.ktor.util.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.decodeFromJsonElement
 import narpc.dto.FileContainer
 import narpc.exceptions.*
 import utils.json
 
 actual object NarpcClient {
+    @OptIn(InternalAPI::class)
     actual inline fun <reified T : Any> build(
         endpoint: String,
         headers: Map<String, String>,
-        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?,
-        clientConfig: Json
+        crossinline deserializerGetter: (name: String) -> (it: String) -> Any
     ): T {
 
         val proxy = Proxy(json { }, json {
@@ -27,18 +24,24 @@ actual object NarpcClient {
                     val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Any =
                         { target, thisArgs, args ->
 
-                            val narpcJsClient = NarpcJsClient(clientConfig)
+                            val narpcJsClient = NarpcJsClient()
 
                             val p = GlobalScope.async {
-                                val json = makeCall(endpoint, prop, args, headers, narpcJsClient)
+                                val dto = makeCall(endpoint, prop, args, headers, narpcJsClient)
                                 try {
-                                    val deserializer = deserializerGetter(prop)
-                                    deserializer?.let {
-                                        Json.decodeFromJsonElement(deserializer, json as JsonElement)
-                                    }?: Json.decodeFromJsonElement(json as JsonElement)
+                                    if (dto is Unit)
+                                        dto
+                                    else{
+                                        val deserializer = deserializerGetter(prop)
+                                        deserializer(dto as String)
+                                    }
+//                                    deserializer?.let {
+//                                        Json.decodeFromJsonElement(deserializer, json as JsonElement)
+//                                    }?: Json.decodeFromJsonElement(json as JsonElement)
                                 }catch (e: Exception){
+                                    console.log(e.message)
                                     console.log(e.stackTraceToString())
-                                    json
+                                    dto
                                 }
                             }
                             p
@@ -74,8 +77,12 @@ actual object NarpcClient {
         } else {
             narpcJsClient.sendRequest(endpoint, methodName, args, headers)
         }
+        console.log("makeCall nrpcResponse is $nrpcResponse\n")
+        console.log("makeCall nrpcResponse.status is ${nrpcResponse.status}\n")
+        console.log("makeCall nrpcResponse.dto is ${nrpcResponse.dto}\n")
 
         if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS) {
+            console.log("makeCall nrpcResponse ${nrpcResponse.status} status != ${CommonCodes.BASIC_SUCCESS} \n")
             when (nrpcResponse.status) {
                 CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message)
                 CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message)
@@ -87,8 +94,11 @@ actual object NarpcClient {
         }
 
         val dto = nrpcResponse.dto
+        console.log("received dto is :$dto\n")
         if (dto != null) {
-            return dto
+            val json = JSON.stringify(dto)
+            console.log("received dto serialized is :$json\n")
+            return json
         }
         return Unit
     }

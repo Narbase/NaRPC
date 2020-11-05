@@ -30,7 +30,7 @@ kotlin {
                 implementation kotlin('stdlib-common')
                 implementation("io.ktor:ktor-client-core:$ktor_version")
 //                implementation("io.ktor:ktor-client-apache:$ktor_version")
-                implementation("io.ktor:ktor-client-serialization:$ktor_version")
+//                implementation("io.ktor:ktor-client-serialization:$ktor_version")
             }
         }
         commonTest {
@@ -59,7 +59,7 @@ kotlin {
                 implementation kotlin('stdlib-js')
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-js:$coroutinesVersion")
                 implementation("io.ktor:ktor-client-js:$ktor_version")
-                implementation("io.ktor:ktor-client-serialization-js:$ktor_version")
+//                implementation("io.ktor:ktor-client-serialization-js:$ktor_version")
                 implementation("com.narbase:kunafa:0.2.19")
             }
         }

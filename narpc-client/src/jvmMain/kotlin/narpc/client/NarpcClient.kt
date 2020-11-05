@@ -1,11 +1,9 @@
 package narpc.client
 
-import io.ktor.client.features.json.serializer.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.KSerializer
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
@@ -23,13 +21,12 @@ actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
         headers: Map<String, String>,
-        crossinline deserializerGetter: (name: String) -> KSerializer<out Any>?,
-        clientConfig: Json
+        deserializerGetter: (name: String) -> (it: String) -> Any
     ): T {
         val serviceClass = T::class
         val classLoader = serviceClass.java.classLoader
         val interfaces = arrayOf(serviceClass.java)
-        val narpcKtorClient = NarpcKtorClient(clientConfig)
+        val narpcKtorClient = NarpcKtorClient()
         val proxy = NarpcProxyListener(endpoint, serviceClass, headers, narpcKtorClient)
         return Proxy.newProxyInstance(classLoader, interfaces, proxy) as T
     }
