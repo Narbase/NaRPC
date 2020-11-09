@@ -132,7 +132,7 @@ object NarpcTestUtils {
         @JsName("getAnimals")
         suspend fun getAnimals(animals: String): Deferred<Array<Animal>>
 
-        data class Greeting(val greeting: String, val recipientIds: Array<Int>) {
+        class Greeting(val greeting: String, val recipientIds: Array<Int>) {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
                 if (other == null || this::class.js != other::class.js) return false

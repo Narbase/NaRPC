@@ -94,12 +94,15 @@ actual object NarpcClient {
             }
         }
 
+        val dto2 = JSON.parse<Any>(nrpcResponse.dto ?: "{}")
+
+
         val dto = nrpcResponse.dto
         nlog("received dto is :$dto\n")
         if (dto != null) {
-            val json = JSON.stringify(dto)
-            nlog("received dto serialized is :$json\n")
-            return json
+//            val json = JSON.stringify(dto)
+//            nlog("received dto serialized is :$json\n")
+            return dto
         }
         return Unit
     }

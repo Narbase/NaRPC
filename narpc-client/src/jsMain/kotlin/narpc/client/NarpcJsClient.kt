@@ -64,10 +64,10 @@ class NarpcJsClient {
             nlog(json)
             nlog("\n received json as ${json}\n")
             StringBuilder(json)
-            val o = json.quoteString()
+//            val o = json.quoteString()
 //            val o = json.escapeIfNeeded()
-            nlog(o)
-            nlog("\n processed json as $o\n")
+//            nlog(o)
+//            nlog("\n processed json as $o\n")
             val response: NarpcResponseDto = JSON.parse(json)
             nlog("\n parsed response is $response\n")
             return response

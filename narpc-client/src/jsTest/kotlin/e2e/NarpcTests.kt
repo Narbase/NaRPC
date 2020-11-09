@@ -61,12 +61,15 @@ internal class NarpcTests {
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
-        val greeting = NarpcTestUtils.TestService.Greeting("Hello", arrayOf(1, 3))
+        val greetingString = "Hello"
+        val recipientIds = arrayOf(1, 3)
+        val greeting = NarpcTestUtils.TestService.Greeting(greetingString, recipientIds)
         val response = service.wrappedHello(greeting).await()
 
         nlog("\n${response}\n$greeting\n")
         assertTrue {
-            greeting == response
+            greeting.greeting == greetingString
+            greeting.recipientIds.contentEquals(recipientIds)
         }
     }
 
