@@ -17,8 +17,7 @@ import kotlin.reflect.jvm.javaType
 actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
-        headers: Map<String, String>,
-        deserializerGetter: (name: String) -> (it: String) -> Any
+        headers: Map<String, String>
     ): T {
         val serviceClass = T::class
         val classLoader = serviceClass.java.classLoader

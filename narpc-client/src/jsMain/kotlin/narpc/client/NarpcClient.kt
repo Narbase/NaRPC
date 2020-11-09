@@ -1,7 +1,6 @@
 package narpc.client
 
 import com.narbase.narnic.narpc.cilent.js.Proxy
-import io.ktor.util.*
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import narpc.dto.FileContainer
@@ -10,12 +9,12 @@ import narpc.utils.nlog
 import utils.json
 
 actual object NarpcClient {
-    @OptIn(InternalAPI::class)
     actual inline fun <reified T : Any> build(
         endpoint: String,
         headers: Map<String, String>,
-        crossinline deserializerGetter: (name: String) -> (it: String) -> Any
     ): T {
+
+        @Suppress("CanBeVal") var deserializerGetter: (name: String) -> (it: String) -> Any = { { JSON.parse(it) } }
 
         val proxy = Proxy(json { }, json {
             "get" to { _: dynamic, prop: String, _: dynamic ->
