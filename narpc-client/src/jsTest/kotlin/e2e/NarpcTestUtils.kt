@@ -3,8 +3,9 @@ package e2e
 import kotlinx.coroutines.Deferred
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
-import narpc.exceptions.NarpcException
 import narpc.exceptions.NarpcBaseExceptionFactory
+import narpc.exceptions.NarpcException
+import narpc.utils.nlog
 
 object NarpcTestUtils {
 
@@ -37,25 +38,25 @@ object NarpcTestUtils {
                     }
                     "wrappedHello" -> {
                         {
-                            console.log("dto to parse is $it\n")
+                            nlog("dto to parse is $it\n")
 //                            val s = it.escapeIfNeeded()
-//                            console.log("escaped dto to parse is $s")
+//                            log("escaped dto to parse is $s")
                             val greeting = JSON.parse<Greeting>(it)
 /*
                             { key, value ->
                                 (if (value is Array<*>) {
-                                    console.log("value $value is Array<*>\n")
+                                    log("value $value is Array<*>\n")
                                     value.toList()
                                 } else {
-                                    console.log("value $value is  ${if (value != null) value::class.simpleName else "null"}\n")
+                                    log("value $value is  ${if (value != null) value::class.simpleName else "null"}\n")
                                     value
                                 })
                             }
 */
-                            console.log("parsed greeting is ${greeting}\n")
-                            console.log("parsed greeting.greeting is ${greeting.greeting}\n")
-                            console.log("parsed greeting.recepientIds is ${greeting.recipientIds}\n")
-//                            console.log("parsed greeting.recepientIds toString is ${greeting.recepientIds.joinToString()}")
+                            nlog("parsed greeting is ${greeting}\n")
+                            nlog("parsed greeting.greeting is ${greeting.greeting}\n")
+                            nlog("parsed greeting.recepientIds is ${greeting.recipientIds}\n")
+//                            log("parsed greeting.recepientIds toString is ${greeting.recepientIds.joinToString()}")
                             greeting
                         }
                     }
@@ -80,7 +81,7 @@ object NarpcTestUtils {
                     "getFirstEnum" -> {
                         { json ->
                             val processedJson = json.removeSurrounding("\"")
-                            console.log("enum json is $json. processed enum json is $processedJson. TestEnum.First.name = ${TestEnum.First.name}. TestEnum.First.toString() = ${TestEnum.First.toString()}\n")
+                            nlog("enum json is $json. processed enum json is $processedJson. TestEnum.First.name = ${TestEnum.First.name}. TestEnum.First.toString() = ${TestEnum.First.toString()}\n")
                             TestEnum.values().first { it.name == processedJson }
 //                            JSON.parse<TestEnum>(json)
 

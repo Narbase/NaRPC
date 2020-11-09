@@ -9,6 +9,7 @@ import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
 import narpc.exceptions.ServerException
+import narpc.utils.nlog
 import org.w3c.xhr.FormData
 import kotlin.coroutines.Continuation
 
@@ -43,14 +44,14 @@ class NarpcJsClient {
 //                }
                 .toTypedArray())
 
-        console.log("sendRequest\n")
-        console.log("requestArgs: ${args.joinToString { "${it::class.simpleName}" }}\n")
-        console.log("getContinuation: ${args.any { it is Continuation<*> }}\n")
-        console.log(dto)
+        nlog("sendRequest\n")
+        nlog("requestArgs: ${args.joinToString { "${it::class.simpleName}" }}\n")
+        nlog("getContinuation: ${args.any { it is Continuation<*> }}\n")
+        nlog(dto)
         val text = JSON.stringify(dto)
-        console.log("serialized NarpcClientRequestDto is $text\n")
+        nlog("serialized NarpcClientRequestDto is $text\n")
         val body = TextContent(text, ContentType.Application.Json)
-        console.log(body)
+        nlog(body)
 
         try {
             val json: String = synchronousPost(
@@ -60,15 +61,15 @@ class NarpcJsClient {
                 body = body
             )
 
-            console.log(json)
-            console.log("\n received json as ${json}\n")
+            nlog(json)
+            nlog("\n received json as ${json}\n")
             StringBuilder(json)
             val o = json.quoteString()
 //            val o = json.escapeIfNeeded()
-            console.log(o)
-            console.log("\n processed json as $o\n")
+            nlog(o)
+            nlog("\n processed json as $o\n")
             val response: NarpcResponseDto = JSON.parse(json)
-            console.log("\n parsed response is $response\n")
+            nlog("\n parsed response is $response\n")
             return response
         } catch (t: Throwable) {
             t.printStackTrace()
@@ -79,9 +80,9 @@ class NarpcJsClient {
     /*
     private fun serializeArgument(arg: Any): JsonElement {
         return try {
-            console.log("trying to serialize arg $arg \n")
+            log("trying to serialize arg $arg \n")
             if (arg is Continuation<*>) {
-                console.log("\narg is Continuation<*> $arg \n")
+                log("\narg is Continuation<*> $arg \n")
                 Json.encodeToJsonElement("{}")
             } else {
                 val serializer = buildSerializer(arg, SerializersModule { }) // reflection call to get real KClass
@@ -154,7 +155,7 @@ class NarpcJsClient {
         setContentType: Boolean = true
     ): T {
 
-        console.log("\nmakeSynchronousPostRequest : requestDto = $requestBody\n")
+        nlog("\nmakeSynchronousPostRequest : requestDto = $requestBody\n")
 
 
         val headersPairs = headers?.map { header ->
@@ -187,7 +188,7 @@ class NarpcJsClient {
         } catch (t: Throwable) {
             t.printStackTrace()
             if (t is ResponseException) {
-                console.log("caught a response exception\n")
+                nlog("caught a response exception\n")
                 throw ServerException(
                     t.response?.status?.value ?: defaultHttpErrorCode,
                     t.response?.status?.description ?: defaultHttpErrorMessage,
@@ -216,32 +217,32 @@ private const val defaultHttpErrorMessage = ""
 @Suppress("UNCHECKED_CAST")
 @OptIn(InternalSerializationApi::class, ExperimentalSerializationApi::class)
 fun buildSerializer(value: Any, module: SerializersModule): KSerializer<Any> {
-    console.log("buildSerializer called\n")
+    log("buildSerializer called\n")
     return when (value) {
         is JsonElement -> {
-            console.log("buildSerializer called on value $value which is a JsonElement\n")
+            log("buildSerializer called on value $value which is a JsonElement\n")
             JsonElement.serializer()
         }
         is List<*> -> {
-            console.log("buildSerializer called on value $value which is a List\n")
+            log("buildSerializer called on value $value which is a List\n")
             ListSerializer(value.elementSerializer(module))
         }
         is Array<*> -> {
-            console.log("buildSerializer called on value $value which is an Array\n")
+            log("buildSerializer called on value $value which is an Array\n")
             value.firstOrNull()?.let { buildSerializer(it, module) } ?: ListSerializer(String.serializer())
         }
         is Set<*> -> {
-            console.log("buildSerializer called on value $value which is a Set\n")
+            log("buildSerializer called on value $value which is a Set\n")
             SetSerializer(value.elementSerializer(module))
         }
         is Map<*, *> -> {
-            console.log("buildSerializer called on value $value which is a Map\n")
+            log("buildSerializer called on value $value which is a Map\n")
             val keySerializer = value.keys.elementSerializer(module)
             val valueSerializer = value.values.elementSerializer(module)
             MapSerializer(keySerializer, valueSerializer)
         }
         else -> {
-            console.log("buildSerializer called on value $value which is else\n")
+            log("buildSerializer called on value $value which is else\n")
             module.getContextual(value::class) ?: value::class.serializer()
         }
     } as KSerializer<Any>
@@ -281,18 +282,18 @@ private fun Collection<*>.elementSerializer(module: SerializersModule): KSeriali
 @OptIn(InternalSerializationApi::class)
 inline fun <reified T : Any> T.decodeNarpcResponse(): T =
     if (this is Unit) {
-        console.log("decoding a Unit\n")
+        log("decoding a Unit\n")
         Unit as T
     } else {
-//        console.log("are these logs appearing?\n")
+//        log("are these logs appearing?\n")
 //        this.asDynamic() as JsonElement
         val deserializer = buildSerializer(this, SerializersModule { })
-        console.log("decoding a non Unit.. ${this::class} to be exact\n")
-        console.log("deserializer ${deserializer.descriptor}\n")
+        log("decoding a non Unit.. ${this::class} to be exact\n")
+        log("deserializer ${deserializer.descriptor}\n")
         val element = this.asDynamic() as JsonElement
-        console.log("element $element is ${element::class}\n")
+        log("element $element is ${element::class}\n")
         val decoded = Json.decodeFromJsonElement(deserializer, element)
-        console.log("decoded is $decoded which is a ${decoded::class}\n")
+        log("decoded is $decoded which is a ${decoded::class}\n")
         decoded as T
     }
 */

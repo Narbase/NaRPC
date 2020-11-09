@@ -6,6 +6,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import narpc.dto.FileContainer
 import narpc.exceptions.*
+import narpc.utils.nlog
 import utils.json
 
 actual object NarpcClient {
@@ -18,7 +19,7 @@ actual object NarpcClient {
 
         val proxy = Proxy(json { }, json {
             "get" to { _: dynamic, prop: String, _: dynamic ->
-                console.log("Inside get $prop\n")
+                nlog("Inside get $prop\n")
                 val pr = Proxy({}, json {
 
                     val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Any =
@@ -31,16 +32,16 @@ actual object NarpcClient {
                                 try {
                                     if (dto is Unit)
                                         dto
-                                    else{
+                                    else {
                                         val deserializer = deserializerGetter(prop)
                                         deserializer(dto as String)
                                     }
 //                                    deserializer?.let {
 //                                        Json.decodeFromJsonElement(deserializer, json as JsonElement)
 //                                    }?: Json.decodeFromJsonElement(json as JsonElement)
-                                }catch (e: Exception){
-                                    console.log(e.message)
-                                    console.log(e.stackTraceToString())
+                                } catch (e: Exception) {
+                                    nlog(e.message)
+                                    nlog(e.stackTraceToString())
                                     dto
                                 }
                             }
@@ -50,7 +51,7 @@ actual object NarpcClient {
 
                     "apply" to callAsyncApplyFun
                 })
-                console.log(pr)
+                nlog(pr)
                 pr
             }
         })
@@ -68,7 +69,7 @@ actual object NarpcClient {
         headers: Map<String, String>,
         narpcJsClient: NarpcJsClient
     ): Any {
-        console.log("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}], headers = [${headers}]\n")
+        nlog("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}], headers = [${headers}]\n")
         val firstArgumentIsFile = args.firstOrNull() is FileContainer
         val firstArgumentIsFileArray = (args.firstOrNull() as? Array<*>)?.firstOrNull() is FileContainer
         val firstArgumentIsFileCollection = (args.firstOrNull() as? Collection<*>)?.firstOrNull() is FileContainer
@@ -77,12 +78,12 @@ actual object NarpcClient {
         } else {
             narpcJsClient.sendRequest(endpoint, methodName, args, headers)
         }
-        console.log("makeCall nrpcResponse is $nrpcResponse\n")
-        console.log("makeCall nrpcResponse.status is ${nrpcResponse.status}\n")
-        console.log("makeCall nrpcResponse.dto is ${nrpcResponse.dto}\n")
+        nlog("makeCall nrpcResponse is $nrpcResponse\n")
+        nlog("makeCall nrpcResponse.status is ${nrpcResponse.status}\n")
+        nlog("makeCall nrpcResponse.dto is ${nrpcResponse.dto}\n")
 
         if (nrpcResponse.status != CommonCodes.BASIC_SUCCESS) {
-            console.log("makeCall nrpcResponse ${nrpcResponse.status} status != ${CommonCodes.BASIC_SUCCESS} \n")
+            nlog("makeCall nrpcResponse ${nrpcResponse.status} status != ${CommonCodes.BASIC_SUCCESS} \n")
             when (nrpcResponse.status) {
                 CommonCodes.UNKNOWN_ERROR -> throw UnknownErrorException(nrpcResponse.message)
                 CommonCodes.INVALID_REQUEST -> throw InvalidRequestException(nrpcResponse.message)
@@ -94,10 +95,10 @@ actual object NarpcClient {
         }
 
         val dto = nrpcResponse.dto
-        console.log("received dto is :$dto\n")
+        nlog("received dto is :$dto\n")
         if (dto != null) {
             val json = JSON.stringify(dto)
-            console.log("received dto serialized is :$json\n")
+            nlog("received dto serialized is :$json\n")
             return json
         }
         return Unit

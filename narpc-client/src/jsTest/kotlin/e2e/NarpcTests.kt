@@ -9,6 +9,7 @@ import narpc.client.NarpcClient
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
 import narpc.exceptions.UnknownErrorException
+import narpc.utils.nlog
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -35,7 +36,7 @@ internal class NarpcTests {
 //        val response = service.empty().await().decodeNarpcResponse() //this is unstable
 //        val json = service.empty().await()
         val response = service.empty().await()
-//        console.log("json is $json\n")
+//        log("json is $json\n")
 //        val response = json.decodeNarpcResponse() // but this works somehow. TODO: figure out the difference
 //        val jsonElement = service.empty().await().asDynamic() as JsonElement
 //        val response = Json.decodeFromJsonElement(Unit.serializer(),jsonElement)
@@ -51,7 +52,7 @@ internal class NarpcTests {
         val response = service.hello(greeting).await()
 //        val response = Json.decodeFromJsonElement(String.serializer(), json.asDynamic() as JsonElement)
         val other = NarpcTestUtils.greetingResponse(greeting)
-        console.log("\n${response}\n$other\n")
+        nlog("\n${response}\n$other\n")
         assertTrue {
             response.equals(other, true)
         }
@@ -63,7 +64,7 @@ internal class NarpcTests {
         val greeting = NarpcTestUtils.TestService.Greeting("Hello", arrayOf(1, 3))
         val response = service.wrappedHello(greeting).await()
 
-        console.log("\n${response}\n$greeting\n")
+        nlog("\n${response}\n$greeting\n")
         assertTrue {
             greeting == response
         }
@@ -132,7 +133,7 @@ internal class NarpcTests {
             try {
                 unauthenticatedService.hello(greeting).await()
             } catch (e: ServerException) {
-                console.log("did catch a  server exception! What is wrong with you js!!")
+                nlog("did catch a  server exception! What is wrong with you js!!")
                 assertTrue { e.httpStatus == 401 }
                 throw e
             }
@@ -199,8 +200,8 @@ internal class NarpcTests {
         val results = service.deferredIntsAsync(1, 32).await()
 //        val json = service.deferredIntsAsync(1, 32).await() as JsonElement
 //        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
-        console.log("results: $results are ${results::class}")
-        assertTrue{
+        nlog("results: $results are ${results::class}")
+        assertTrue {
             results.contentDeepEquals((1..32).toList().toTypedArray())
         }
     }
