@@ -1,6 +1,14 @@
 package e2e
 
 import kotlinx.coroutines.Deferred
+import kotlinx.serialization.PolymorphicSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseExceptionFactory
@@ -22,6 +30,23 @@ object NarpcTestUtils {
 
     interface TestService {
         companion object {
+            val format =
+                Json {
+                    //copy from DefaultJson
+                    isLenient = false
+                    ignoreUnknownKeys = false
+                    allowSpecialFloatingPointValues = true
+                    useArrayPolymorphism = false
+
+                    serializersModule = SerializersModule {
+                        polymorphic(Animal::class) {
+                            subclass(Mammal::class, Mammal.serializer())
+                            subclass(Bird::class, Bird.serializer()
+                            )
+                        }
+                    }
+                }
+
             fun functionsReturnsMap(name: String): (it: String) -> Any =
                 when (name) {
                     "empty" -> {
@@ -30,41 +55,24 @@ object NarpcTestUtils {
                     "hello" -> {
                         {
 //                            it
-                            JSON.parse<String>(it)
+                            Json.decodeFromString(String.serializer(), it)
+//                            JSON.parse<String>(it)
                         }
                     }
                     "reverse" -> {
-                        { JSON.parse<Array<SimpleTestItem>>(it) }
+                        { Json.decodeFromString(ListSerializer(SimpleTestItem.serializer()), it) }
                     }
                     "wrappedHello" -> {
                         {
-                            nlog("dto to parse is $it\n")
-//                            val s = it.escapeIfNeeded()
-//                            log("escaped dto to parse is $s")
-                            val greeting = JSON.parse<Greeting>(it)
-/*
-                            { key, value ->
-                                (if (value is Array<*>) {
-                                    log("value $value is Array<*>\n")
-                                    value.toList()
-                                } else {
-                                    log("value $value is  ${if (value != null) value::class.simpleName else "null"}\n")
-                                    value
-                                })
-                            }
-*/
-                            nlog("parsed greeting is ${greeting}\n")
-                            nlog("parsed greeting.greeting is ${greeting.greeting}\n")
-                            nlog("parsed greeting.recepientIds is ${greeting.recipientIds}\n")
-//                            log("parsed greeting.recepientIds toString is ${greeting.recepientIds.joinToString()}")
+                            val greeting = Json.decodeFromString(Greeting.serializer(), it)
                             greeting
                         }
                     }
                     "sendFile" -> {
-                        { JSON.parse<Boolean>(it) }
+                        { Json.decodeFromString(Boolean.serializer(), it) }
                     }
                     "sendFiles" -> {
-                        { JSON.parse<Int>(it) }
+                        { Json.decodeFromString(Int.serializer(), it) }
                     }
                     "throwUnknownErrorException" -> {
                         { Unit }
@@ -76,19 +84,15 @@ object NarpcTestUtils {
                         { Unit }
                     }
                     "deferredIntsAsync" -> {
-                        { JSON.parse<Array<Int>>(it) }
+                        { Json.decodeFromString(ListSerializer(Int.serializer()), it) }
                     }
                     "getFirstEnum" -> {
                         { json ->
-                            val processedJson = json.removeSurrounding("\"")
-                            nlog("enum json is $json. processed enum json is $processedJson. TestEnum.First.name = ${TestEnum.First.name}. TestEnum.First.toString() = ${TestEnum.First.toString()}\n")
-                            TestEnum.values().first { it.name == processedJson }
-//                            JSON.parse<TestEnum>(json)
-
+                            Json.decodeFromString(TestEnum.serializer(), json)
                         }
                     }
                     "getAnimals" -> {
-                        { JSON.parse<Array<Animal>>(it) }
+                        { format.decodeFromString(ListSerializer(PolymorphicSerializer(Animal::class)), it) }
                     }
                     else -> {
                         { it }
@@ -103,7 +107,7 @@ object NarpcTestUtils {
         suspend fun hello(greeting: String): Deferred<String>
 
         @JsName("reverse")
-        suspend fun reverse(listToBeReversed: Array<SimpleTestItem>): Deferred<Array<SimpleTestItem>>
+        suspend fun reverse(listToBeReversed: List<SimpleTestItem>): Deferred<List<SimpleTestItem>>
 
         @JsName("wrappedHello")
         suspend fun wrappedHello(greeting: Greeting): Deferred<Greeting>
@@ -124,66 +128,35 @@ object NarpcTestUtils {
         suspend fun throwExceptionMapExampleException(message: String): Deferred<Unit>
 
         @JsName("deferredIntsAsync")
-        fun deferredIntsAsync(start: Int, end: Int): Deferred<Array<Int>>
+        fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
 
         @JsName("getFirstEnum")
         suspend fun getFirstEnum(): Deferred<TestEnum>
 
         @JsName("getAnimals")
-        suspend fun getAnimals(animals: String): Deferred<Array<Animal>>
+        suspend fun getAnimals(animals: String): Deferred<List<Animal>>
 
-        class Greeting(val greeting: String, val recipientIds: Array<Int>) {
-            override fun equals(other: Any?): Boolean {
-                if (this === other) return true
-                if (other == null || this::class.js != other::class.js) return false
+        @Serializable
+        data class Greeting(val greeting: String, val recipientIds: List<Int>)
 
-                other as Greeting
+        @Serializable
+        data class SimpleTestItem(val name: String, val numbersList: List<Int>)
 
-                if (greeting != other.greeting) return false
-                if (!recipientIds.contentDeepEquals(other.recipientIds)) return false
-
-                return true
-            }
-
-            override fun hashCode(): Int {
-                var result = greeting.hashCode()
-                result = 31 * result + recipientIds.contentHashCode()
-                return result
-            }
-        }
-
-        data class SimpleTestItem(val name: String, val numbersList: Array<Int>) {
-            override fun equals(other: Any?): Boolean {
-                if (this === other) return true
-                if (other == null || this::class.js != other::class.js) return false
-
-                other as SimpleTestItem
-
-                if (name != other.name) return false
-                if (!numbersList.contentEquals(other.numbersList)) return false
-
-                return true
-            }
-
-            override fun hashCode(): Int {
-                var result = name.hashCode()
-                result = 31 * result + numbersList.contentHashCode()
-                return result
-            }
-        }
-
-
+        @Serializable
         enum class TestEnum { First, Second, Third }
 
 
+        @Serializable
         abstract class Animal {
             abstract val name: String
         }
 
-
+        @Serializable
+        @SerialName("mammal")
         class Mammal(override val name: String, val legs: Int) : Animal()
 
-
+        @Serializable
+        @SerialName("bird")
         class Bird(override val name: String, val wings: Int) : Animal()
 
     }

@@ -62,28 +62,27 @@ internal class NarpcTests {
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
         val greetingString = "Hello"
-        val recipientIds = arrayOf(1, 3)
+        val recipientIds = listOf(1, 3)
         val greeting = NarpcTestUtils.TestService.Greeting(greetingString, recipientIds)
         val response = service.wrappedHello(greeting).await()
 
         nlog("\n${response}\n$greeting\n")
         assertTrue {
-            greeting.greeting == greetingString
-            greeting.recipientIds.contentEquals(recipientIds)
+            greeting == response
         }
     }
 
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingListsOfItems() = GlobalScope.promise {
-        val array = arrayOf(
-            NarpcTestUtils.TestService.SimpleTestItem("item_1", arrayOf(1, 2)),
-            NarpcTestUtils.TestService.SimpleTestItem("item_2", arrayOf(2, 3)),
-            NarpcTestUtils.TestService.SimpleTestItem("item_3", arrayOf(3, 4))
+        val listToBeReversed = listOf(
+            NarpcTestUtils.TestService.SimpleTestItem("item_1", listOf(1, 2)),
+            NarpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
+            NarpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
         )
-        val response = service.reverse(array).await()
+        val response = service.reverse(listToBeReversed).await()
         assertTrue {
-            response.contentDeepEquals(array.reversed().toTypedArray())
+            response == listToBeReversed.reversed()
         }
     }
 
@@ -205,7 +204,7 @@ internal class NarpcTests {
 //        val results = Json.decodeFromJsonElement(ListSerializer(Int.serializer()), json)
         nlog("results: $results are ${results::class}")
         assertTrue {
-            results.contentDeepEquals((1..32).toList().toTypedArray())
+            results == (1..32).toList()
         }
     }
 
