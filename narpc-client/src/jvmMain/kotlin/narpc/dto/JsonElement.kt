@@ -7,7 +7,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 actual class NarpcResponseDto(
-    val dto: JsonElement?,
+    val dto: String?,
 
     val status: String = "0",
 

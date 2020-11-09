@@ -86,12 +86,12 @@ class NarpcProxyListener<T : Any>(
                 val serializer =
                     serializer((myMethod.returnType.javaType as ParameterizedType).actualTypeArguments.first())
                 GlobalScope.async {
-                    Json.decodeFromJsonElement(serializer, dto)!!//Todo: Is this a safe !!
+                    Json.decodeFromString(serializer, dto)!!//Todo: Is this a safe !!
                 }
 
             } else {
                 val serializer = serializer(myMethod.returnType)
-                Json.decodeFromJsonElement(serializer, dto)!!//Todo: Is this a safe !!
+                Json.decodeFromString(serializer, dto)!!//Todo: Is this a safe !!
             }
 
         }

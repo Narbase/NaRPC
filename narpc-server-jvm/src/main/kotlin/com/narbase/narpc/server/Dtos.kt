@@ -2,7 +2,6 @@ package com.narbase.narpc.server
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
-import java.io.File
 
 /*
 @Suppress("unused", "ArrayInDataClass")
@@ -15,7 +14,7 @@ data class NarpcServerRequestDto(val functionName: String, val args: Array<JsonE
 
 @Serializable
 data class NarpcResponseDto(
-    val dto: JsonElement?,
+    val dto: String?,
 
     val status: String = "0",
 

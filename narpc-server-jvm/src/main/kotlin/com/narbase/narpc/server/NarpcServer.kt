@@ -45,7 +45,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
             NarpcResponseDto(res?.let {
                 val serializer = serializerForSending(res, module) as KSerializer<Any>
 //                format.encodeToJsonElement(serializer(returnType), res)
-                format.encodeToJsonElement(serializer, res)
+                format.encodeToString(serializer, res)
             })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
@@ -144,7 +144,14 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let { format.encodeToJsonElement(serializerForSending(result, module) as KSerializer<Any>, result) })
+            NarpcResponseDto(result?.let {
+                format.encodeToString(
+                    serializerForSending(
+                        result,
+                        module
+                    ) as KSerializer<Any>, result
+                )
+            })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         }
