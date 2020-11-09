@@ -6,20 +6,15 @@ import com.auth0.jwt.algorithms.Algorithm
 import com.narbase.narpc.server.NarpcKtorHandler
 import com.narbase.narpc.server.NarpcServer
 import e2e.NarpcTestUtils
-import e2e.NarpcTestUtils.TestService.*
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
 import io.ktor.features.*
+import io.ktor.gson.*
 import io.ktor.http.*
 import io.ktor.routing.*
-import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
 import org.slf4j.event.Level
 import java.time.Duration
 
@@ -28,25 +23,19 @@ object TestServer {
         embeddedServer(Netty, port = 8010, module = { testModule() }).apply { start(false) }
     }
 
-    @OptIn(InternalSerializationApi::class)
     private fun Application.testModule() {
 
         install(ContentNegotiation) {
-            json(Json {
-                encodeDefaults = true
-                isLenient = true
-                allowSpecialFloatingPointValues = true
-                allowStructuredMapKeys = true
-                prettyPrint = false
-                useArrayPolymorphism = true
-                serializersModule = SerializersModule {
+            gson {
+//                registerTypeAdapterFactory(RuntTyp) // Use RuntimeTypeAdapterFactory
+/*
                     polymorphic(Animal::class) {
                         subclass(Mammal::class, Mammal.serializer())
                         subclass(Bird::class, Bird.serializer())
                     }
-                }
+*/
 
-            })
+            }
 //            serialization(ContentType.Any)
 //            gson {
 //                setPrettyPrinting()
@@ -84,14 +73,7 @@ object TestServer {
 
             authenticate("JwtAuth") {
                 post("/test") {
-                    NarpcKtorHandler(NarpcServer(NarpcTestUtils.RemoteTestService(), serializersModule =
-                    SerializersModule {
-                        polymorphic(Animal::class) {
-                            subclass(Mammal::class, Mammal.serializer())
-                            subclass(Bird::class, Bird.serializer())
-                        }
-                    }
-                    )).handle(call)
+                    NarpcKtorHandler(NarpcServer(NarpcTestUtils.RemoteTestService())).handle(call)
                 }
             }
         }

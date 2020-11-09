@@ -1,19 +1,10 @@
 package e2e
 
 import kotlinx.coroutines.Deferred
-import kotlinx.serialization.PolymorphicSerializer
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcBaseExceptionFactory
 import narpc.exceptions.NarpcException
-import narpc.utils.nlog
 
 object NarpcTestUtils {
 
@@ -30,74 +21,7 @@ object NarpcTestUtils {
 
     interface TestService {
         companion object {
-            val format =
-                Json {
-                    //copy from DefaultJson
-                    isLenient = false
-                    ignoreUnknownKeys = false
-                    allowSpecialFloatingPointValues = true
-                    useArrayPolymorphism = false
 
-                    serializersModule = SerializersModule {
-                        polymorphic(Animal::class) {
-                            subclass(Mammal::class, Mammal.serializer())
-                            subclass(Bird::class, Bird.serializer()
-                            )
-                        }
-                    }
-                }
-
-            fun functionsReturnsMap(name: String): (it: String) -> Any =
-                when (name) {
-                    "empty" -> {
-                        { Unit }
-                    }
-                    "hello" -> {
-                        {
-//                            it
-                            Json.decodeFromString(String.serializer(), it)
-//                            JSON.parse<String>(it)
-                        }
-                    }
-                    "reverse" -> {
-                        { Json.decodeFromString(ListSerializer(SimpleTestItem.serializer()), it) }
-                    }
-                    "wrappedHello" -> {
-                        {
-                            val greeting = Json.decodeFromString(Greeting.serializer(), it)
-                            greeting
-                        }
-                    }
-                    "sendFile" -> {
-                        { Json.decodeFromString(Boolean.serializer(), it) }
-                    }
-                    "sendFiles" -> {
-                        { Json.decodeFromString(Int.serializer(), it) }
-                    }
-                    "throwUnknownErrorException" -> {
-                        { Unit }
-                    }
-                    "throwCustomException" -> {
-                        { Unit }
-                    }
-                    "throwExceptionMapExampleException" -> {
-                        { Unit }
-                    }
-                    "deferredIntsAsync" -> {
-                        { Json.decodeFromString(ListSerializer(Int.serializer()), it) }
-                    }
-                    "getFirstEnum" -> {
-                        { json ->
-                            Json.decodeFromString(TestEnum.serializer(), json)
-                        }
-                    }
-                    "getAnimals" -> {
-                        { format.decodeFromString(ListSerializer(PolymorphicSerializer(Animal::class)), it) }
-                    }
-                    else -> {
-                        { it }
-                    }
-                }
         }
 
         @JsName("empty")
@@ -107,7 +31,7 @@ object NarpcTestUtils {
         suspend fun hello(greeting: String): Deferred<String>
 
         @JsName("reverse")
-        suspend fun reverse(listToBeReversed: List<SimpleTestItem>): Deferred<List<SimpleTestItem>>
+        suspend fun reverse(listToBeReversed: Array<SimpleTestItem>): Deferred<Array<SimpleTestItem>>
 
         @JsName("wrappedHello")
         suspend fun wrappedHello(greeting: Greeting): Deferred<Greeting>
@@ -128,35 +52,27 @@ object NarpcTestUtils {
         suspend fun throwExceptionMapExampleException(message: String): Deferred<Unit>
 
         @JsName("deferredIntsAsync")
-        fun deferredIntsAsync(start: Int, end: Int): Deferred<List<Int>>
+        fun deferredIntsAsync(start: Int, end: Int): Deferred<Array<Int>>
 
         @JsName("getFirstEnum")
         suspend fun getFirstEnum(): Deferred<TestEnum>
 
         @JsName("getAnimals")
-        suspend fun getAnimals(animals: String): Deferred<List<Animal>>
+        suspend fun getAnimals(animals: String): Deferred<Array<Animal>>
 
-        @Serializable
-        data class Greeting(val greeting: String, val recipientIds: List<Int>)
+        data class Greeting(val greeting: String, val recipientIds: Array<Int>)
 
-        @Serializable
-        data class SimpleTestItem(val name: String, val numbersList: List<Int>)
+        data class SimpleTestItem(val name: String, val numbersList: Array<Int>)
 
-        @Serializable
         enum class TestEnum { First, Second, Third }
 
 
-        @Serializable
         abstract class Animal {
             abstract val name: String
         }
 
-        @Serializable
-        @SerialName("mammal")
         class Mammal(override val name: String, val legs: Int) : Animal()
 
-        @Serializable
-        @SerialName("bird")
         class Bird(override val name: String, val wings: Int) : Animal()
 
     }

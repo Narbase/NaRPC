@@ -1,13 +1,9 @@
 package e2e
 
-import e2e.NarpcTestUtils.TestService.*
+import e2e.NarpcTestUtils.TestService.Bird
+import e2e.NarpcTestUtils.TestService.Mammal
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
@@ -221,18 +217,18 @@ internal class NarpcTests {
 
     @Test
     fun testPolymorphicSerialization() {
-        val animals = listOf<Animal>(Mammal("lion", 4), Mammal("Human", 2))
-        val format = Json {
-            serializersModule = SerializersModule {
-                polymorphic(Animal::class) {
-                    subclass(Mammal::class, Mammal.serializer())
-                    subclass(Bird::class, Bird.serializer())
-                }
-            }
-        }
-        println(format.encodeToJsonElement(animals))
-        println(format.encodeToJsonElement(ListSerializer(Animal.serializer()), animals))
-        println(format.encodeToJsonElement(ListSerializer(Mammal.serializer()), animals as List<Mammal>))
+//        val animals = listOf<Animal>(Mammal("lion", 4), Mammal("Human", 2))
+//        val format = Json {
+//            serializersModule = SerializersModule {
+//                polymorphic(Animal::class) {
+//                    subclass(Mammal::class, Mammal.serializer())
+//                    subclass(Bird::class, Bird.serializer())
+//                }
+//            }
+//        }
+//        println(format.encodeToJsonElement(animals))
+//        println(format.encodeToJsonElement(ListSerializer(Animal.serializer()), animals))
+//        println(format.encodeToJsonElement(ListSerializer(Mammal.serializer()), animals as List<Mammal>))
         assertTrue { true }
     }
 

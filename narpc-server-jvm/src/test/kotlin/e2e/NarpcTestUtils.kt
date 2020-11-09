@@ -6,12 +6,10 @@ import jvm_library_test.e2e.TestServer
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
-import narpc.exceptions.NarpcException
 import narpc.exceptions.NarpcBaseExceptionFactory
+import narpc.exceptions.NarpcException
 import narpc.exceptions.UnknownErrorException
 import java.io.File
 import kotlin.random.Random
@@ -54,7 +52,6 @@ object NarpcTestUtils {
         suspend fun getFirstEnum(): TestEnum
         suspend fun getAnimals(animals: String): Array<Animal>
 
-        @Serializable
         data class Greeting(val greeting: String, val recipientIds: Array<Int>) {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -75,7 +72,6 @@ object NarpcTestUtils {
             }
         }
 
-        @Serializable
         data class SimpleTestItem(val name: String, val numbersList: Array<Int>) {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -98,17 +94,12 @@ object NarpcTestUtils {
 
         enum class TestEnum{First, Second, Third}
 
-        @Serializable
         abstract class Animal {
             abstract val name: String
         }
 
-        @Serializable
-        @SerialName("mammal")
         class Mammal(override val name: String, val legs: Int) : Animal()
 
-        @Serializable
-        @SerialName("bird")
         class Bird(override val name: String, val wings: Int) : Animal()
 
 

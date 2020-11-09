@@ -1,13 +1,8 @@
 package com.narbase.narpc.server
 
+import com.google.gson.Gson
+import com.google.gson.JsonElement
 import kotlinx.coroutines.Deferred
-import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.serializer
-import narpc.client.serializerForSending
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
 import java.lang.reflect.InvocationTargetException
@@ -19,14 +14,14 @@ import kotlin.coroutines.CoroutineContext
 
 
 @Suppress("FunctionName")
-inline fun <reified C : Any> NarpcServer(service: C,serializersModule: SerializersModule= SerializersModule {  }) = NarpcServer(service, service::class.java, serializersModule)
+inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, service::class.java)
 
-class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val module: SerializersModule = SerializersModule {  }) {
-//    var gson = Gson()
+class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
+    var gson = Gson()
 
-    val format = Json { this.serializersModule = module }
+//    val format = Json { this.serializersModule = module }
 
-    @OptIn(ExperimentalSerializationApi::class)
+    //    @OptIn(ExperimentalSerializationApi::class)
     suspend fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
@@ -43,9 +38,10 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
             else result
 
             NarpcResponseDto(res?.let {
-                val serializer = serializerForSending(res, module) as KSerializer<Any>
+                gson.toJson(res)
+//                val serializer = serializerForSending(res, module) as KSerializer<Any>
 //                format.encodeToJsonElement(serializer(returnType), res)
-                format.encodeToString(serializer, res)
+//                format.encodeToString(serializer, res)
             })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
@@ -70,14 +66,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
         return if (type.name == "kotlin.coroutines.Continuation") {
             createContinuation()
         } else {
-            try {
-                val serializer = serializer(type)
-                format.decodeFromJsonElement(serializer, any)
-            } catch (t: Throwable) {
-                t.printStackTrace()
-                val serializer = serializerForSending(any, module)
-                format.decodeFromJsonElement(serializer, any)
-            }
+            gson.fromJson(any, type)
         }
     }
 
@@ -135,8 +124,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
                 } else {
                     if (arg is JsonElement) deserializeArgument(typesList, index, arg)
                     else {
-                        val serializer = serializer(type)
-                        format.decodeFromJsonElement(serializer, arg as JsonElement)
+                        gson.fromJson((arg as JsonElement), type)
                     }
                 }
             }
@@ -144,14 +132,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>, val
         println("NarpcServer::process: results are ${results.joinToString()}")
         return try {
             val result = method.invoke(service, *results)
-            NarpcResponseDto(result?.let {
-                format.encodeToString(
-                    serializerForSending(
-                        result,
-                        module
-                    ) as KSerializer<Any>, result
-                )
-            })
+            NarpcResponseDto(result?.let { gson.toJson(result) })
         } catch (e: NarpcException) {
             NarpcResponseDto(null, status = e.status, message = e.message ?: "")
         }

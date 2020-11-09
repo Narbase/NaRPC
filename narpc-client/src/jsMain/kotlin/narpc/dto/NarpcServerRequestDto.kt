@@ -1,9 +1,5 @@
 package narpc.dto
 
-import kotlin.js.Json
-
-//import kotlinx.serialization.Serializable
-//import kotlinx.serialization.json.JsonElement
 
 //@Serializable
 //actual class NarpcServerRequestDto(val functionName: String, val args: Array<JSON>)

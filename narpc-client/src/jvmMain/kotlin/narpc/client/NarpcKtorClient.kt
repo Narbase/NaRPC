@@ -1,33 +1,18 @@
 package narpc.client
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.apache.Apache
+import com.google.gson.Gson
+import io.ktor.client.*
+import io.ktor.client.engine.apache.*
 import io.ktor.client.features.*
-import io.ktor.client.features.json.JsonFeature
-import io.ktor.client.features.json.serializer.*
-import io.ktor.client.request.forms.FormBuilder
-import io.ktor.client.request.forms.FormPart
-import io.ktor.client.request.forms.MultiPartFormDataContent
-import io.ktor.client.request.forms.formData
-import io.ktor.client.request.headers
-import io.ktor.client.request.post
+import io.ktor.client.features.json.*
+import io.ktor.client.request.*
+import io.ktor.client.request.forms.*
 import io.ktor.http.*
-import io.ktor.utils.io.core.buildPacket
-import io.ktor.utils.io.core.writeFully
-import kotlinx.serialization.*
-import kotlinx.serialization.builtins.*
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.modules.SerializersModule
+import io.ktor.utils.io.core.*
 import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.exceptions.ServerException
-import kotlin.coroutines.Continuation
-import kotlin.reflect.KClass
-import kotlin.reflect.KType
-import kotlin.reflect.full.starProjectedType
-import kotlin.reflect.jvm.jvmErasure
 
 /*
  * NARBASE TECHNOLOGIES CONFIDENTIAL
@@ -38,9 +23,7 @@ import kotlin.reflect.jvm.jvmErasure
  * On: 2020/09/18.
  */
 
-@Serializable
-class ContinuationClass()
-class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
+class NarpcKtorClient {
 
     val client by lazy {
         HttpClient(Apache) {
@@ -51,7 +34,7 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
 
             }
             install(JsonFeature) {
-                serializer = KotlinxSerializer(clientConfig)
+                serializer = GsonSerializer()
             }
         }
     }
@@ -61,7 +44,6 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
         private const val defaultHttpErrorCode = 500 //Todo : is this a decent default if the response is null?
     }
 
-    @InternalSerializationApi
     suspend fun sendRequest(
         endpoint: String,
         methodName: String,
@@ -69,19 +51,8 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
         globalHeaders: Map<String, String>
     ): String {
 
-        val argsList = args.toList()
-//        val serial = serializerForSending(argsList, SerializersModule {  })
 
-//        ListSerializer(argsList.elementSerializer(SerializersModule {  }))
-        val dto = NarpcClientRequestDto(
-            methodName,
-            argsList.map {
-//            val serial = it::class.serializer() // reflection call to get real KClass
-                serializeArgument(it)
-            }.toTypedArray()
-
-//            (Json.encodeToJsonElement(serial, argsList) as JsonArray).toTypedArray()
-        )
+        val dto = NarpcClientRequestDto(methodName, args)
         println("requestDto = $dto")
         try {
             val response: String = client.post(endpoint) {
@@ -110,37 +81,6 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
         }
     }
 
-    private fun serializeArgument(arg: Any): JsonElement {
-        return try {
-            //                    val serial = serializer(it::class.starProjectedType) // reflection call to get real KClass
-            val serializer = serializerForSending(
-                arg,
-                clientConfig.serializersModule
-            ) as KSerializer<Any> // reflection call to get real KClass
-            Json.encodeToJsonElement(serializer, arg)
-
-        } catch (e: UnsupportedOperationException) {
-            if (arg is Continuation<*>) {
-                //                        val serial = serializer<Continuation<Unit>>()
-
-                Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
-            } else {
-                val serial = serializer(arg::class.java)
-                Json.encodeToJsonElement(serial, arg)
-            }
-        } catch (e: SerializationException) {
-            if (arg is Continuation<*>) {
-                //                        val serial = serializer<Continuation<Unit>>()
-                Json.encodeToJsonElement(ContinuationClass.serializer(), ContinuationClass())
-            } else {
-                val serial = serializer(arg::class.java)
-                Json.encodeToJsonElement(serial, arg)
-            }
-        }
-    }
-
-
-    @InternalSerializationApi
     suspend fun sendMultipartRequest(
         endpoint: String,
         methodName: String,
@@ -150,11 +90,7 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
-                .map {
-                    serializeArgument(it)
-                }
-                .toTypedArray()
-        )
+                .toTypedArray())
         try {
             val response: String = client.post(endpoint) {
                 headers {
@@ -178,7 +114,7 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
                                 }
                             }
                         }
-                        this.append(FormPart("nrpcDto", Json.encodeToString(dto)))
+                        this.append(FormPart("nrpcDto", Gson().toJson(dto)))
                     }
                 )
             }
@@ -222,86 +158,3 @@ class NarpcKtorClient(val clientConfig: Json = KotlinxSerializer.DefaultJson) {
 */
 
 }
-
-
-/***
- * The following few functions are ripped of ktor's serialization
- */
-
-//public fun serializerForSending(value: Any): KSerializer<Any> = serializerForSending(value, SerializersModule { }) as KSerializer<Any>
-
-@OptIn(InternalSerializationApi::class)
-public fun serializerForSending(value: Any, module: SerializersModule): KSerializer<*> = when (value) {
-    is JsonElement -> JsonElement.serializer()
-    is List<*> -> ListSerializer(value.elementSerializer(module))
-    is Set<*> -> SetSerializer(value.elementSerializer(module))
-    is Map<*, *> -> MapSerializer(value.keys.elementSerializer(module), value.values.elementSerializer(module))
-    is Map.Entry<*, *> -> MapEntrySerializer(
-        serializerForSending(value.key ?: error("Map.Entry(null, ...) is not supported"), module),
-        serializerForSending(value.value ?: error("Map.Entry(..., null) is not supported)"), module)
-    )
-    is Array<*> -> {
-        val componentType = value.javaClass.componentType.kotlin.starProjectedType
-        val componentClass =
-            componentType.classifier as? KClass<*> ?: error("Unsupported component type $componentType")
-
-        @Suppress("UNCHECKED_CAST")
-        (ArraySerializer(
-            componentClass as KClass<Any>,
-            serializerByTypeInfo(componentType) as KSerializer<Any>
-        ))
-    }
-    else -> module.getContextual(value::class) ?: value::class.serializer()
-}
-
-@OptIn(ExperimentalStdlibApi::class)
-internal fun serializerByTypeInfo(type: KType): KSerializer<*> {
-    val classifierClass = type.classifier as? KClass<*>
-    if (classifierClass != null && classifierClass.java.isArray) {
-        return arraySerializer(type)
-    }
-
-    return serializer(type)
-}
-
-// NOTE: this should be removed once kotlinx.serialization serializer get support of arrays that is blocked by KT-32839
-private fun arraySerializer(type: KType): KSerializer<*> {
-    val elementType = type.arguments[0].type ?: error("Array<*> is not supported")
-    val elementSerializer = serializerByTypeInfo(elementType)
-
-
-    @Suppress("UNCHECKED_CAST")
-    return ArraySerializer(
-        elementType.jvmErasure as KClass<Any>,
-        elementSerializer as KSerializer<Any>
-    )
-}
-
-
-@Suppress("EXPERIMENTAL_API_USAGE_ERROR")
-private fun Collection<*>.elementSerializer(module: SerializersModule): KSerializer<*> {
-    val serializers = mapNotNull { value ->
-        value?.let { serializerForSending(it, module) }
-    }.distinctBy { it.descriptor.serialName }
-
-    if (serializers.size > 1) {
-        val message = "Serializing collections of different element types is not yet supported. " +
-                "Selected serializers: ${serializers.map { it.descriptor.serialName }}"
-        error(message)
-    }
-
-    val selected: KSerializer<*> = serializers.singleOrNull() ?: String.serializer()
-    if (selected.descriptor.isNullable) {
-        return selected
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    selected as KSerializer<Any>
-
-    if (any { it == null }) {
-        return selected.nullable
-    }
-
-    return selected
-}
-
