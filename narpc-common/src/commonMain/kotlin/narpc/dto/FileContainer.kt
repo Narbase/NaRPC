@@ -10,8 +10,6 @@ package narpc.dto
  * On: 2020/09/19.
  */
 
-/*
 expect class File
 
 class FileContainer(val file: File)
-*/
