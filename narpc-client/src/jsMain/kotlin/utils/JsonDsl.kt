@@ -1,5 +1,6 @@
 package utils
 
+import narpc.utils.nlog
 import kotlin.js.Json
 import kotlin.js.json
 
@@ -22,7 +23,7 @@ fun createJson2() {
             "key5" to arrayOf(1, 2, 3, 4)
         }
     }
-    console.log(js)
+    nlog(js)
 }
 
 private fun populateChartData() {
@@ -68,18 +69,18 @@ fun createJson() {
                 }
         )
         "series" to jsonArray(
-                {
-                    "1" to 1
-                    "2" to 2
-                    "3" to 3
-                },
-                {
-                    "just_empty" to 0
-                }
+            {
+                "1" to 1
+                "2" to 2
+                "3" to 3
+            },
+            {
+                "just_empty" to 0
+            }
         )
     }
-    console.log(option)
-    console.log(JSON.stringify(option))
+    nlog(option)
+    nlog(JSON.stringify(option))
 }
 
 

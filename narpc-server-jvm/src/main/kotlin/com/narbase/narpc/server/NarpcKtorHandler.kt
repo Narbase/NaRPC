@@ -1,18 +1,14 @@
 package com.narbase.narpc.server
 
 
-import io.ktor.application.ApplicationCall
-import io.ktor.features.UnsupportedMediaTypeException
-import io.ktor.http.ContentType
-import io.ktor.http.charset
-import io.ktor.http.content.PartData
-import io.ktor.http.content.readAllParts
-import io.ktor.http.content.streamProvider
+import com.google.gson.Gson
+import io.ktor.application.*
+import io.ktor.features.*
+import io.ktor.features.ContentTransformationException
+import io.ktor.http.*
+import io.ktor.http.content.*
 import io.ktor.request.*
-import io.ktor.response.respond
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
+import io.ktor.response.*
 import java.nio.charset.Charset
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.memberProperties
@@ -54,9 +50,10 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
     }
 
     suspend fun processMultipart(parts: List<PartData>): NarpcResponseDto {
-        val narpcDtoJson = parts.first { it is PartData.FormItem && it.name == "nrpcDto" }.let { it as PartData.FormItem }.value
-        val requestDto = Json.decodeFromString<NarpcServerRequestDto>(narpcDtoJson)
-//        val requestDto = Gson().fromJson(narpcDtoJson, NarpcServerRequestDto::class.java)
+        val narpcDtoJson =
+            parts.first { it is PartData.FormItem && it.name == "nrpcDto" }.let { it as PartData.FormItem }.value
+//        val requestDto = Json.decodeFromString<NarpcServerRequestDto>(narpcDtoJson)
+        val requestDto = Gson().fromJson(narpcDtoJson, NarpcServerRequestDto::class.java)
         val files = parts.filter { it is PartData.FileItem }.map {
             val item = it as PartData.FileItem
             FileDescriptor(item.originalFileName, item.streamProvider())
@@ -69,14 +66,15 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
     private suspend fun ApplicationCall.extractDto(): NarpcServerRequestDto {
         return try {
             val text = receiveTextWithCorrectEncoding()
-            Json.decodeFromString<NarpcServerRequestDto>(text)
-//            narpcServer.gson.fromJson(text, NarpcServerRequestDto::class.java)
-                    ?: throw GsonParsingContentTransformationException()
+//            Json.decodeFromString<NarpcServerRequestDto>(text)
+            narpcServer.gson.fromJson(text, NarpcServerRequestDto::class.java)
+                ?: throw GsonParsingContentTransformationException()
         } catch (e: UnsupportedMediaTypeException) {
-            Json.decodeFromString<NarpcServerRequestDto>("{}")
-//            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
+//            Json.decodeFromString<NarpcServerRequestDto>("{}")
+            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
         } catch (e: ContentTransformationException) {
-            Json.decodeFromString<NarpcServerRequestDto>("{}")
+//            Json.decodeFromString<NarpcServerRequestDto>("{}")
+            narpcServer.gson.fromJson("{}", NarpcServerRequestDto::class.java)
         }
     }
 

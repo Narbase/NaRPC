@@ -1,15 +1,9 @@
 package e2e
 
-import e2e.NarpcTestUtils.TestService.*
+import e2e.NarpcTestUtils.TestService.Bird
+import e2e.NarpcTestUtils.TestService.Mammal
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.InternalSerializationApi
-import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.polymorphic
-import kotlinx.serialization.serializer
 import narpc.client.NarpcClient
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
@@ -29,27 +23,7 @@ internal class NarpcTests {
         "http://localhost:8010/test",
         headers = mapOf(
             "Authorization" to "Bearer ${getToken("test_user")}"
-        ),
-        clientConfig = Json {
-            //copy from DefaultJson
-            isLenient = false
-            ignoreUnknownKeys = false
-            allowSpecialFloatingPointValues = true
-            useArrayPolymorphism = false
-
-            serializersModule = SerializersModule {
-                polymorphic(Animal::class) {
-                    subclass(
-                        Mammal::class,
-                        Mammal.serializer()
-                    )
-                    subclass(
-                        Bird::class,
-                        Bird.serializer()
-                    )
-                }
-            }
-        }
+        )
 
     )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
@@ -95,7 +69,7 @@ internal class NarpcTests {
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() {
         runBlocking {
-            val greeting = NarpcTestUtils.TestService.Greeting("Hello", listOf(1, 3))
+            val greeting = NarpcTestUtils.TestService.Greeting("Hello", arrayOf(1, 3))
             val response = service.wrappedHello(greeting)
             assertTrue {
                 response.equals(greeting)
@@ -106,14 +80,14 @@ internal class NarpcTests {
     @Test
     fun narpc_shouldSupport_sendingAndReceivingListsOfItems() {
         runBlocking {
-            val array = listOf(
-                NarpcTestUtils.TestService.SimpleTestItem("item_1", listOf(1, 2)),
-                NarpcTestUtils.TestService.SimpleTestItem("item_2", listOf(2, 3)),
-                NarpcTestUtils.TestService.SimpleTestItem("item_3", listOf(3, 4))
+            val array = arrayOf(
+                NarpcTestUtils.TestService.SimpleTestItem("item_1", arrayOf(1, 2)),
+                NarpcTestUtils.TestService.SimpleTestItem("item_2", arrayOf(2, 3)),
+                NarpcTestUtils.TestService.SimpleTestItem("item_3", arrayOf(3, 4))
             )
             val response = service.reverse(array)
             assertTrue {
-                response.equals(array.reversed())
+                response.contentDeepEquals(array.reversed().toTypedArray())
             }
         }
     }
@@ -227,7 +201,9 @@ internal class NarpcTests {
     fun deferredRPCs_ShouldReturnDeferred_whenCalled() {
         runBlocking {
             val results = service.deferredIntsAsync(1, 32).await()
-            assertEquals(results, (1..32).toList())
+            assertTrue {
+                results.contentDeepEquals((1..32).toList().toTypedArray())
+            }
         }
     }
 
@@ -241,18 +217,18 @@ internal class NarpcTests {
 
     @Test
     fun testPolymorphicSerialization() {
-        val animals = listOf<Animal>(Mammal("lion", 4), Mammal("Human", 2))
-        val format = Json {
-            serializersModule = SerializersModule {
-                polymorphic(Animal::class) {
-                    subclass(Mammal::class, Mammal.serializer())
-                    subclass(Bird::class, Bird.serializer())
-                }
-            }
-        }
-        println(format.encodeToJsonElement(animals))
-        println(format.encodeToJsonElement(ListSerializer(Animal.serializer()), animals))
-        println(format.encodeToJsonElement(ListSerializer(Mammal.serializer()), animals as List<Mammal>))
+//        val animals = listOf<Animal>(Mammal("lion", 4), Mammal("Human", 2))
+//        val format = Json {
+//            serializersModule = SerializersModule {
+//                polymorphic(Animal::class) {
+//                    subclass(Mammal::class, Mammal.serializer())
+//                    subclass(Bird::class, Bird.serializer())
+//                }
+//            }
+//        }
+//        println(format.encodeToJsonElement(animals))
+//        println(format.encodeToJsonElement(ListSerializer(Animal.serializer()), animals))
+//        println(format.encodeToJsonElement(ListSerializer(Mammal.serializer()), animals as List<Mammal>))
         assertTrue { true }
     }
 

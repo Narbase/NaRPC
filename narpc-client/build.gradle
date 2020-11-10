@@ -30,7 +30,7 @@ kotlin {
                 implementation kotlin('stdlib-common')
                 implementation("io.ktor:ktor-client-core:$ktor_version")
 //                implementation("io.ktor:ktor-client-apache:$ktor_version")
-                implementation("io.ktor:ktor-client-serialization:$ktor_version")
+//                implementation("io.ktor:ktor-client-serialization:$ktor_version")
             }
         }
         commonTest {
@@ -45,6 +45,7 @@ kotlin {
                 implementation kotlin('reflect')
                 implementation("io.ktor:ktor-client-apache:$ktor_version")
                 implementation("io.ktor:ktor-client-serialization-jvm:$ktor_version")
+                implementation("io.ktor:ktor-client-gson:$ktor_version")
 //                implementation 'org.jetbrains.kotlin:kotlin-reflect-jvm:1.3.72'
             }
         }
@@ -59,13 +60,13 @@ kotlin {
                 implementation kotlin('stdlib-js')
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-js:$coroutinesVersion")
                 implementation("io.ktor:ktor-client-js:$ktor_version")
-                implementation("io.ktor:ktor-client-serialization-js:$ktor_version")
                 implementation("com.narbase:kunafa:0.2.19")
             }
         }
         jsTest {
             dependencies {
                 implementation kotlin('test-js')
+                implementation("io.ktor:ktor-client-serialization-js:$ktor_version")
 
             }
         }
