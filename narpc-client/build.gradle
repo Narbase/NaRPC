@@ -27,7 +27,7 @@ kotlin {
     sourceSets {
         commonMain {
             dependencies {
-                implementation(project(":narpc-common"))
+                api(project(":narpc-common"))
                 implementation kotlin('stdlib-common')
                 implementation("io.ktor:ktor-client-core:$ktor_version")
 //                implementation("io.ktor:ktor-client-apache:$ktor_version")

@@ -31,7 +31,7 @@ task sourcesJar(type: Jar) {
 
 
 dependencies {
-    implementation(project(":narpc-common"))
+    api(project(":narpc-common"))
 
     // Align versions of all Kotlin components
     implementation platform('org.jetbrains.kotlin:kotlin-bom')
