@@ -10,6 +10,7 @@ import narpc.dto.NarpcClientRequestDto
 import narpc.dto.NarpcResponseDto
 import narpc.exceptions.ServerException
 import narpc.utils.nlog
+import narpc.utils.printDebugStackTrace
 import org.w3c.xhr.FormData
 import kotlin.coroutines.Continuation
 
@@ -72,7 +73,7 @@ class NarpcJsClient {
             nlog("\n parsed response is $response\n")
             return response
         } catch (t: Throwable) {
-            t.printStackTrace()
+            t.printDebugStackTrace()
             throw t
         }
     }
@@ -92,7 +93,7 @@ class NarpcJsClient {
         } catch (e: SerializationException) {
             Json.encodeToJsonElement("{}")
         } catch (e: Throwable) {
-            e.printStackTrace()
+            e.printDebugStackTrace()
             Json.encodeToJsonElement("{}}")
         }
     }
@@ -186,7 +187,7 @@ class NarpcJsClient {
 
             }
         } catch (t: Throwable) {
-            t.printStackTrace()
+            t.printDebugStackTrace()
             if (t is ResponseException) {
                 nlog("caught a response exception\n")
                 throw ServerException(

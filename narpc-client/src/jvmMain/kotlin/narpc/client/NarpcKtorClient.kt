@@ -13,6 +13,7 @@ import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
 import narpc.exceptions.ServerException
+import narpc.utils.printDebugStackTrace
 
 /*
  * NARBASE TECHNOLOGIES CONFIDENTIAL
@@ -68,7 +69,7 @@ class NarpcKtorClient {
             return response
 
         } catch (t: Throwable) {
-            t.printStackTrace()
+            t.printDebugStackTrace()
             if (t is ResponseException) {
                 throw ServerException(
                     t.response?.status?.value ?: defaultHttpErrorCode,
@@ -120,7 +121,7 @@ class NarpcKtorClient {
             }
             return response
         } catch (t: Throwable) {
-            t.printStackTrace()
+            t.printDebugStackTrace()
             if (t is ResponseException) {
                 throw ServerException(
                     t.response?.status?.value ?: defaultHttpErrorCode,

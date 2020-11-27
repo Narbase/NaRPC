@@ -11,6 +11,7 @@ import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
+import kotlin.reflect.full.declaredMemberFunctions
 
 
 @Suppress("FunctionName")
@@ -140,7 +141,7 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
     }
 
     private fun getMethod(functionName: String): Method {
-        val matchingMethods = serviceClass.methods.filter { it.name == functionName }
+        val matchingMethods = serviceClass.methods.filter { (it.name == functionName) && it.isSynthetic.not() }
         if (matchingMethods.isNullOrEmpty()) {
             val message = "noMatchingMethodError"
             println(message)

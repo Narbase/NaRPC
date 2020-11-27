@@ -18,3 +18,8 @@ fun nlog(msg: Any?) {
 }
 
 expect fun printMessage(msg: Any?)
+
+fun Throwable.printDebugStackTrace(){
+    if (IS_DEBUG)
+        printStackTrace()
+}
