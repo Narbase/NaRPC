@@ -2,6 +2,8 @@ package e2e
 
 import com.narbase.narpc.server.InjectApplicationCall
 import io.ktor.application.*
+import io.ktor.auth.*
+import jvm_library_test.e2e.AuthorizedClientData
 import jvm_library_test.e2e.TestServer
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
@@ -51,6 +53,7 @@ object NarpcTestUtils {
         fun deferredIntsAsync(start: Int, end: Int): Deferred<Array<Int>>
         suspend fun getFirstEnum(): TestEnum
         suspend fun getAnimals(animals: String): Array<Animal>
+        suspend fun getUsername(): String?
 
         data class Greeting(val greeting: String, val recipientIds: Array<Int>) {
             override fun equals(other: Any?): Boolean {
@@ -205,6 +208,10 @@ object NarpcTestUtils {
                     null
                 }
             }.toTypedArray()
+        }
+
+        override suspend fun getUsername(): String? {
+            return call.principal<AuthorizedClientData>()?.name
         }
     }
 

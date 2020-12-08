@@ -5,6 +5,7 @@ import e2e.NarpcTestUtils.TestService.Mammal
 import jvm_library_test.e2e.getToken
 import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
+import narpc.client.headers
 import narpc.dto.FileContainer
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
@@ -19,13 +20,18 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 internal class NarpcTests {
+    private var username = "test_user"
+
     val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
-        headers = mapOf(
-            "Authorization" to "Bearer ${getToken("test_user")}"
+    ) {
+        headers(
+            mapOf(
+                "Authorization" to "Bearer ${getToken(username)}"
+            )
         )
 
-    )
+    }
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     val DIVISION_BY_ZERO_STATUS = "DIVISION_BY_ZERO_STATUS"
@@ -250,6 +256,20 @@ internal class NarpcTests {
             assertTrue { animals.size == 3 }
             assertTrue { animals.first() is Mammal && (animals.first() as Mammal).legs == 4 }
             assertTrue { animals[1] is Bird && (animals[1] as Bird).wings == 2 }
+        }
+    }
+
+    @Test
+    fun differentClientName_ShouldBeReturned_whenServerIsCalledAfterTokenIsUpdated() {
+        //This is failing due to an issue with kotlinx serialization
+        runBlocking {
+            val firstUsername = service.getUsername()
+            assertTrue { firstUsername == username }
+            val anotherUsername = "second_username"
+            username = anotherUsername
+            val secondUsername = service.getUsername()
+            assertTrue { secondUsername == anotherUsername }
+
         }
     }
 

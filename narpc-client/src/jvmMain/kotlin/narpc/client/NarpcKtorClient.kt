@@ -49,16 +49,17 @@ class NarpcKtorClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        globalHeaders: Map<String, String>
+        block: NarpcClientRequestBuilder.() -> Unit
     ): String {
 
-
+        val narpcClientRequestBuilder = NarpcClientRequestBuilder()
+        narpcClientRequestBuilder.block()
         val dto = NarpcClientRequestDto(methodName, args)
         println("requestDto = $dto")
         try {
             val response: String = client.post(endpoint) {
                 headers {
-                    globalHeaders.forEach {
+                    narpcClientRequestBuilder.headers.forEach {
                         append(it.key, it.value)
                     }
                 }
@@ -86,8 +87,11 @@ class NarpcKtorClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        globalHeaders: Map<String, String>
+        block: NarpcClientRequestBuilder.() -> Unit
     ): String {
+        val narpcClientRequestBuilder = NarpcClientRequestBuilder()
+        narpcClientRequestBuilder.block()
+
         val dto = NarpcClientRequestDto(
             methodName,
             args.filterNot { it is FileContainer || (it is List<*> && it.isNotEmpty() && it.first() is FileContainer) }
@@ -95,7 +99,7 @@ class NarpcKtorClient {
         try {
             val response: String = client.post(endpoint) {
                 headers {
-                    globalHeaders.forEach {
+                    narpcClientRequestBuilder.headers.forEach {
                         append(it.key, it.value)
                     }
                     //                append("Authorization", "XXXX")

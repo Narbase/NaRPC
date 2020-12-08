@@ -6,6 +6,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
 import narpc.client.NarpcClient
+import narpc.client.headers
 import narpc.exceptions.NarpcException
 import narpc.exceptions.ServerException
 import narpc.exceptions.UnknownErrorException
@@ -22,10 +23,15 @@ import kotlin.test.assertTrue
 internal class NarpcTests {
     val service: NarpcTestUtils.TestService = NarpcClient.build(
         "http://localhost:8010/test",
-        headers = mapOf(
-            "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+    ) {
+        headers(
+            mapOf(
+                "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+            )
         )
-    )
+
+
+    }
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 

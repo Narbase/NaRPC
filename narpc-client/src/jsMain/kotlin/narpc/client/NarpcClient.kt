@@ -11,7 +11,7 @@ import utils.json
 actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
-        headers: Map<String, String>,
+        noinline block: NarpcClientRequestBuilder.()-> Unit,
     ): T {
 
         @Suppress("CanBeVal") var deserializerGetter: (name: String) -> (it: String) -> Any = { { JSON.parse(it) } }
@@ -27,7 +27,7 @@ actual object NarpcClient {
                             val narpcJsClient = NarpcJsClient()
 
                             val p = GlobalScope.async {
-                                val dto = makeCall(endpoint, prop, args, headers, narpcJsClient)
+                                val dto = makeCall(endpoint, prop, args, block, narpcJsClient)
                                 try {
                                     if (dto is Unit)
                                         dto
@@ -65,17 +65,18 @@ actual object NarpcClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        headers: Map<String, String>,
+        block: NarpcClientRequestBuilder.()-> Unit,
         narpcJsClient: NarpcJsClient
     ): Any {
-        nlog("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}], headers = [${headers}]\n")
+//        nlog("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}], headers = [${headers}]\n")
+        nlog("makeCall endpoint = [${endpoint}], methodName = [${methodName}], args = [${args}]]\n")
         val firstArgumentIsFile = args.firstOrNull() is FileContainer
         val firstArgumentIsFileArray = (args.firstOrNull() as? Array<*>)?.firstOrNull() is FileContainer
         val firstArgumentIsFileCollection = (args.firstOrNull() as? Collection<*>)?.firstOrNull() is FileContainer
         val nrpcResponse = if (firstArgumentIsFile || firstArgumentIsFileArray || firstArgumentIsFileCollection) {
-            narpcJsClient.sendMultipartRequest(endpoint, methodName, args, headers)
+            narpcJsClient.sendMultipartRequest(endpoint, methodName, args, block)
         } else {
-            narpcJsClient.sendRequest(endpoint, methodName, args, headers)
+            narpcJsClient.sendRequest(endpoint, methodName, args, block)
         }
         nlog("makeCall nrpcResponse is $nrpcResponse\n")
         nlog("makeCall nrpcResponse.status is ${nrpcResponse.status}\n")

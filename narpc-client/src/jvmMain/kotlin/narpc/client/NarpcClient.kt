@@ -17,13 +17,13 @@ import kotlin.reflect.jvm.javaType
 actual object NarpcClient {
     actual inline fun <reified T : Any> build(
         endpoint: String,
-        headers: Map<String, String>
+        noinline block: NarpcClientRequestBuilder.()-> Unit,
     ): T {
         val serviceClass = T::class
         val classLoader = serviceClass.java.classLoader
         val interfaces = arrayOf(serviceClass.java)
         val narpcKtorClient = NarpcKtorClient()
-        val proxy = NarpcProxyListener(endpoint, serviceClass, headers, narpcKtorClient)
+        val proxy = NarpcProxyListener(endpoint, serviceClass, block, narpcKtorClient)
         return Proxy.newProxyInstance(classLoader, interfaces, proxy) as T
     }
 
@@ -34,7 +34,7 @@ actual object NarpcClient {
 class NarpcProxyListener<T : Any>(
     private val endpoint: String,
     private val service: KClass<T>,
-    val globalHeaders: Map<String, String>,
+    val block: NarpcClientRequestBuilder.() -> Unit,
     val narpcKtorClient: NarpcKtorClient
 ) : InvocationHandler {
     override fun invoke(proxy: Any, method: Method, args: Array<Any>): Any {
@@ -55,9 +55,9 @@ class NarpcProxyListener<T : Any>(
             firstArgument?.rawType == List::class.java && firstArgument.actualTypeArguments.first() == FileContainer::class.java
         println("method: $methodName, args: ${args.joinToString()}")
         val jsonValue = if (firstArgumentIsFile || firstArgumentIsFileList) {
-            narpcKtorClient.sendMultipartRequest(endpoint, methodName, args, globalHeaders)
+            narpcKtorClient.sendMultipartRequest(endpoint, methodName, args, block)
         } else {
-            narpcKtorClient.sendRequest(endpoint, methodName, args, globalHeaders)
+            narpcKtorClient.sendRequest(endpoint, methodName, args, block)
         }
 
         val nrpcResponse = Gson().fromJson<NarpcResponseDto>(jsonValue, NarpcResponseDto::class.java)

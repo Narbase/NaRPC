@@ -60,6 +60,10 @@ object NarpcTestUtils {
         @JsName("getAnimals")
         suspend fun getAnimals(animals: String): Deferred<Array<Animal>>
 
+
+        @JsName("getUsername")
+        suspend fun getUsername(): Deferred<String?>
+
         data class Greeting(val greeting: String, val recipientIds: Array<Int>)
 
         data class SimpleTestItem(val name: String, val numbersList: Array<Int>)

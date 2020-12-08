@@ -34,7 +34,7 @@ class NarpcJsClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        headers: Map<String, String>
+        block: NarpcClientRequestBuilder.()-> Unit,
     ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(
             methodName,
@@ -53,11 +53,13 @@ class NarpcJsClient {
         nlog("serialized NarpcClientRequestDto is $text\n")
         val body = TextContent(text, ContentType.Application.Json)
         nlog(body)
+        val narpcClientRequestBuilder = NarpcClientRequestBuilder()
+        narpcClientRequestBuilder.block()
 
         try {
             val json: String = synchronousPost(
                 endpoint,
-                headers = headers,
+                headers = narpcClientRequestBuilder.headers,
 //                    headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),
                 body = body
             )
@@ -103,7 +105,7 @@ class NarpcJsClient {
         endpoint: String,
         methodName: String,
         args: Array<Any>,
-        headers: Map<String, String>
+        block: NarpcClientRequestBuilder.()-> Unit
     ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(methodName, args.filterNot {
             it is FileContainer ||
@@ -127,10 +129,12 @@ class NarpcJsClient {
             }
         }
         formData.append("nrpcDto", JSON.stringify(dto))
+        val narpcClientRequestBuilder = NarpcClientRequestBuilder()
+        narpcClientRequestBuilder.block()
 
         return synchronousPost(
             url = endpoint,
-            headers = headers,
+            headers = narpcClientRequestBuilder.headers,
 //                headers = mapOf("Authorization" to "Bearer ${ServerCaller.accessToken}"),//Todo: why was this commented out?
             body = formData,
             setContentType = false
