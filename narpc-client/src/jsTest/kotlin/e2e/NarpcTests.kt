@@ -7,8 +7,9 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
 import narpc.client.NarpcClient
 import narpc.client.headers
+import narpc.exceptions.InvalidRequestException
 import narpc.exceptions.NarpcException
-import narpc.exceptions.ServerException
+import narpc.exceptions.UnauthenticatedException
 import narpc.exceptions.UnknownErrorException
 import narpc.utils.nlog
 import kotlin.test.Test
@@ -143,12 +144,11 @@ internal class NarpcTests {
     @Test
     fun unauthenticatedService_shouldGet401ServerException_whenHelloIsSent() = GlobalScope.promise {
         val greeting = "Hello"
-        assertFailsWith(ServerException::class) {
+        assertFailsWith(UnauthenticatedException::class) {
             try {
                 unauthenticatedService.hello(greeting).await()
-            } catch (e: ServerException) {
-                nlog("did catch a  server exception! What is wrong with you js!!")
-                assertTrue { e.httpStatus == 401 }
+            } catch (e: UnauthenticatedException) {
+                nlog("did catch an Unauthenticated exception! What is wrong with you js!!")
                 throw e
             }
         }
@@ -161,12 +161,11 @@ internal class NarpcTests {
 
     @Test
     fun unhandledServiceServerSide_shouldGet404ServerException_whenAnyOfItsFunctionsAreCalled() = GlobalScope.promise {
-        assertFailsWith(ServerException::class) {
+        assertFailsWith(InvalidRequestException::class) {
             try {
                 val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
                 client.doSomething(2).await()
-            } catch (e: ServerException) {
-                assertTrue { e.httpStatus == 404 }
+            } catch (e: InvalidRequestException) {
                 throw e
             }
         }

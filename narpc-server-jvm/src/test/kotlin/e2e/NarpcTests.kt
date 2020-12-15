@@ -7,8 +7,9 @@ import kotlinx.coroutines.runBlocking
 import narpc.client.NarpcClient
 import narpc.client.headers
 import narpc.dto.FileContainer
+import narpc.exceptions.InvalidRequestException
 import narpc.exceptions.NarpcException
-import narpc.exceptions.ServerException
+import narpc.exceptions.UnauthenticatedException
 import narpc.exceptions.UnknownErrorException
 import org.junit.Before
 import org.junit.BeforeClass
@@ -132,11 +133,10 @@ internal class NarpcTests {
     fun unauthenticatedService_shouldGet401ServerException_whenHelloIsSent() {
         runBlocking {
             val greeting = "Hello"
-            assertFailsWith(ServerException::class) {
+            assertFailsWith(UnauthenticatedException::class) {
                 try {
                     unauthenticatedService.hello(greeting)
-                } catch (e: ServerException) {
-                    assertTrue { e.httpStatus == 401 }
+                } catch (e: UnauthenticatedException) {
                     throw e
                 }
             }
@@ -150,13 +150,12 @@ internal class NarpcTests {
     @Test
     fun unhandledServiceServerSide_shouldGet404ServerException_whenAnyOfItsFunctionsAreCalled() {
         runBlocking {
-            assertFailsWith(ServerException::class) {
+            assertFailsWith(InvalidRequestException::class) {
                 try {
 
                     val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
                     client.doSomething(2)
-                } catch (e: ServerException) {
-                    assertTrue { e.httpStatus == 404 }
+                } catch (e: InvalidRequestException) {
                     throw e
                 }
             }

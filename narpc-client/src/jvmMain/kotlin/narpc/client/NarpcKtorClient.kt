@@ -12,7 +12,10 @@ import io.ktor.utils.io.core.*
 import narpc.dto.File
 import narpc.dto.FileContainer
 import narpc.dto.NarpcClientRequestDto
+import narpc.exceptions.InvalidRequestException
 import narpc.exceptions.ServerException
+import narpc.exceptions.UnauthenticatedException
+import narpc.exceptions.UnknownErrorException
 import narpc.utils.printDebugStackTrace
 
 /*
@@ -72,11 +75,18 @@ class NarpcKtorClient {
         } catch (t: Throwable) {
             t.printDebugStackTrace()
             if (t is ResponseException) {
-                throw ServerException(
-                    t.response?.status?.value ?: defaultHttpErrorCode,
-                    t.response?.status?.description ?: defaultHttpErrorMessage,
-                    t.localizedMessage
-                )
+                when (val responseStatus = t.response?.status?.value) {
+                    401 -> throw UnauthenticatedException("${responseStatus}")
+                    403 -> throw UnauthenticatedException("${responseStatus}")
+                    in 400..499 -> throw InvalidRequestException("${responseStatus}")
+                    in 500..599 -> throw ServerException(responseStatus ?: 500, "", "")
+                    else -> throw UnknownErrorException("Status: ${responseStatus}")
+                }
+//                throw ServerException(
+//                    t.response?.status?.value ?: defaultHttpErrorCode,
+//                    t.response?.status?.description ?: defaultHttpErrorMessage,
+//                    t.localizedMessage
+//                )
             } else {
                 throw t
             }
@@ -127,11 +137,18 @@ class NarpcKtorClient {
         } catch (t: Throwable) {
             t.printDebugStackTrace()
             if (t is ResponseException) {
-                throw ServerException(
-                    t.response?.status?.value ?: defaultHttpErrorCode,
-                    t.response?.status?.description ?: defaultHttpErrorMessage,
-                    t.localizedMessage
-                )
+                when (val responseStatus = t.response?.status?.value) {
+                    401 -> throw UnauthenticatedException("${responseStatus}")
+                    403 -> throw UnauthenticatedException("${responseStatus}")
+                    in 400..499 -> throw InvalidRequestException("${responseStatus}")
+                    in 500..599 -> throw ServerException(responseStatus ?: 500, "", "")
+                    else -> throw UnknownErrorException("Status: ${responseStatus}")
+                }
+//                throw ServerException(
+//                    t.response?.status?.value ?: defaultHttpErrorCode,
+//                    t.response?.status?.description ?: defaultHttpErrorMessage,
+//                    t.localizedMessage
+//                )
             } else {
                 throw t
             }

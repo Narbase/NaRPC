@@ -29,9 +29,6 @@ kotlin {
             dependencies {
                 api(project(":narpc-common"))
                 implementation kotlin('stdlib-common')
-                implementation("io.ktor:ktor-client-core:$ktor_version")
-//                implementation("io.ktor:ktor-client-apache:$ktor_version")
-//                implementation("io.ktor:ktor-client-serialization:$ktor_version")
             }
         }
         commonTest {
@@ -44,6 +41,7 @@ kotlin {
             dependencies {
                 implementation kotlin('stdlib-jdk8')
                 implementation kotlin('reflect')
+                implementation("io.ktor:ktor-client-core:$ktor_version")
                 implementation("io.ktor:ktor-client-apache:$ktor_version")
                 implementation("io.ktor:ktor-client-serialization-jvm:$ktor_version")
                 implementation("io.ktor:ktor-client-gson:$ktor_version")
@@ -60,14 +58,11 @@ kotlin {
             dependencies {
                 implementation kotlin('stdlib-js')
                 implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-js:$coroutinesVersion")
-                implementation("io.ktor:ktor-client-js:$ktor_version")
             }
         }
         jsTest {
             dependencies {
                 implementation kotlin('test-js')
-                implementation("io.ktor:ktor-client-serialization-js:$ktor_version")
-
             }
         }
 
