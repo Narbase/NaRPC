@@ -24,10 +24,6 @@ compileTestKotlin {
     kotlinOptions.jvmTarget = "1.8"
 }
 
-task sourcesJar(type: Jar) {
-    from sourceSets.main.allJava
-    archiveClassifier = 'sources'
-}
 
 
 dependencies {
@@ -53,13 +49,3 @@ dependencies {
 //    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.0"
 }
 
-
-publishing {
-    publications {
-        narpcServerJvm(MavenPublication) {
-            from components.java
-            artifact sourcesJar
-        }
-    }
-
-}
