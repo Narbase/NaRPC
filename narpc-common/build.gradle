@@ -7,7 +7,6 @@ kotlin {
     jvm()
     js(BOTH) {
         browser {}
-        binaries.executable()
     }
 
 //    def publicationsFromMainHost =
