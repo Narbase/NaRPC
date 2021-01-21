@@ -33,7 +33,7 @@ class NarpcJsClient {
     suspend fun sendRequest(
         endpoint: String,
         methodName: String,
-        args: Array<Any>,
+        args: Array<Any?>,
         block: NarpcClientRequestBuilder.() -> Unit,
     ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(
@@ -43,7 +43,7 @@ class NarpcJsClient {
                 .toTypedArray())
 
         nlog("sendRequest\n")
-        nlog("requestArgs: ${args.joinToString { "${it::class.simpleName}" }}\n")
+        nlog("requestArgs: ${args.joinToString { "${if (it == null)"" else it::class.simpleName}" }}\n")
         nlog("getContinuation: ${args.any { it is Continuation<*> }}\n")
         nlog(dto)
         val text = JSON.stringify(dto)
@@ -69,7 +69,7 @@ class NarpcJsClient {
     suspend fun sendMultipartRequest(
         endpoint: String,
         methodName: String,
-        args: Array<Any>,
+        args: Array<Any?>,
         block: NarpcClientRequestBuilder.() -> Unit
     ): NarpcResponseDto {
         val dto = NarpcClientRequestDto(methodName, args.filterNot {

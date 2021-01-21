@@ -9,7 +9,7 @@ package narpc.utils
  * On: 2020/11/09.
  */
 
-const val IS_DEBUG = false
+const val IS_DEBUG = true
 
 fun nlog(msg: Any?) {
     if (IS_DEBUG) {

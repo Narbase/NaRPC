@@ -51,7 +51,7 @@ class NarpcKtorClient {
     suspend fun sendRequest(
         endpoint: String,
         methodName: String,
-        args: Array<Any>,
+        args: Array<Any?>,
         block: NarpcClientRequestBuilder.() -> Unit
     ): String {
 
@@ -96,7 +96,7 @@ class NarpcKtorClient {
     suspend fun sendMultipartRequest(
         endpoint: String,
         methodName: String,
-        args: Array<Any>,
+        args: Array<Any?>,
         block: NarpcClientRequestBuilder.() -> Unit
     ): String {
         val narpcClientRequestBuilder = NarpcClientRequestBuilder()
