@@ -195,11 +195,11 @@ internal class NarpcTests {
 
     @Test
     fun exceptionInExceptionsMap_shouldBeReceived_whenItIsThrownServerSide() = GlobalScope.promise {
-        assertFailsWith(NarpcException::class) {
+        assertFailsWith(NarpcTestUtils.ExceptionMapExampleException::class) {
             val exceptionMessage = "agprejgiwogpw"
             try {
                 service.throwExceptionMapExampleException(exceptionMessage).await()
-            } catch (e: NarpcException) {
+            } catch (e: NarpcTestUtils.ExceptionMapExampleException) {
                 assertTrue { e.status == NarpcTestUtils.EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS }
                 assertTrue { e.message == exceptionMessage }
                 throw e
