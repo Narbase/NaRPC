@@ -17,9 +17,6 @@ import kotlin.coroutines.CoroutineContext
 inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, service::class.java)
 
 class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
-    init {
-        validateServiceClass()
-    }
 
     var gson = Gson()
 
@@ -155,13 +152,6 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
             throw NarpcKtorHandler.InvalidRequestException(message)
         }
         return matchingMethods.single()
-    }
-
-    private fun validateServiceClass() {
-        val repeatedMethods = serviceClass.methods.groupingBy { it.name }.eachCount().filter { it.value > 1 }
-        if (repeatedMethods.isNotEmpty()) {
-            throw NarpcKtorHandler.InvalidNarpcServiceClassException("Methods name should not be repeated inside the service class. Repeated names: ${repeatedMethods.keys.joinToString()}")
-        }
     }
 
 }
