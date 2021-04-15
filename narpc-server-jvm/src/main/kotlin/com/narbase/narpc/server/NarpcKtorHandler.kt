@@ -100,5 +100,6 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
     }
 
     open class InvalidRequestException(message: String = "") : Exception(message)
+    open class InvalidNarpcServiceClassException(message: String = "") : Exception(message)
 
 }
