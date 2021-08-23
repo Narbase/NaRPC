@@ -76,7 +76,12 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         return if (type.name == "kotlin.coroutines.Continuation") {
             createContinuation()
         } else {
-            gson.fromJson(any, type)
+            try {
+                gson.fromJson(any, type)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
         }
     }
 

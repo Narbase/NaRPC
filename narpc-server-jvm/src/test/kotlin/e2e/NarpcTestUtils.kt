@@ -109,7 +109,7 @@ object NarpcTestUtils {
     }
 
     interface TestServiceForServerV2 {
-        suspend fun hello(greeting: String, name: String?): String
+        suspend fun hello(greeting: String, age: Int?): String
 
     }
 
@@ -221,9 +221,9 @@ object NarpcTestUtils {
     }
 
     class ServerV2 : TestServiceForServerV2 {
-        override suspend fun hello(greeting: String, name: String?): String {
-            println("greeting = [${greeting}], name = [${name}]")
-            return greetingResponse("$greeting $name")
+        override suspend fun hello(greeting: String, age: Int?): String {
+            println("greeting = [${greeting}], age = [${age}]")
+            return greetingResponse("$greeting $age")
         }
 
     }

@@ -108,7 +108,7 @@ internal class NarpcTests {
     fun remoteCall_shouldWork_whenCalledWithMoreNumberOfParams() {
         runBlocking {
             val greeting = "Hello"
-            val response = serviceWithManyParams.hello(greeting, "whatever")
+            val response = serviceWithManyParams.hello(greeting, 43)
             assertTrue {
                 response == NarpcTestUtils.greetingResponse(greeting)
             }

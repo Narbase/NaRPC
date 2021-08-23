@@ -6,6 +6,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
 import narpc.client.NarpcClient
+import narpc.client.NarpcClientRequestBuilder
 import narpc.client.headers
 import narpc.exceptions.InvalidRequestException
 import narpc.exceptions.NarpcException
@@ -22,17 +23,23 @@ import kotlin.test.assertTrue
  * Before running these tests. run the main function in narpc-serer-jvm test Main.kt to allow the testing server to run
  */
 internal class NarpcTests {
-    val service: NarpcTestUtils.TestService = NarpcClient.build(
-        "http://localhost:8010/test",
-    ) {
+    private val token =
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+
+    private val clientConfig: NarpcClientRequestBuilder.() -> Unit = {
         headers(
             mapOf(
-                "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+                "Authorization" to "Bearer $token"
             )
         )
-
-
     }
+
+    val service: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test", clientConfig)
+    val serviceOutdated: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test_v2", clientConfig)
+    val serviceWithManyParams: NarpcTestUtils.TestServiceForServerV2 = NarpcClient.build(
+        "http://localhost:8010/test",
+        clientConfig
+    )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 
@@ -63,6 +70,23 @@ internal class NarpcTests {
         }
     }
 
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithLessNumberOfParams() = GlobalScope.promise {
+        val greeting = "Hello"
+        val response = serviceOutdated.hello(greeting).await()
+        assertTrue {
+            response.equals(NarpcTestUtils.greetingResponse("$greeting null"), true)
+        }
+    }
+
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithMoreNumberOfParams() = GlobalScope.promise {
+        val greeting = "Hello"
+        val response = serviceWithManyParams.hello(greeting, 42).await()
+        assertTrue {
+            response == NarpcTestUtils.greetingResponse(greeting)
+        }
+    }
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
@@ -99,7 +123,7 @@ internal class NarpcTests {
         }
     }
 
-    //        Todo: figure out how to handle creating client side files for testing
+//        Todo: figure out how to handle creating client side files for testing
 /*
     @Test
     fun fileSend_shouldReturnTrue_whenCalledWithAValidFile() = GlobalScope.promise {
@@ -219,12 +243,12 @@ internal class NarpcTests {
         }
     }
 
-//    @Test
+    //    @Test
 //   Not supported
-fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() = GlobalScope.promise {
-    val enum = service.getFirstEnum().await()
-    assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
-}
+    fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() = GlobalScope.promise {
+        val enum = service.getFirstEnum().await()
+        assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
+    }
 
     @Test
     fun enumTest() {
