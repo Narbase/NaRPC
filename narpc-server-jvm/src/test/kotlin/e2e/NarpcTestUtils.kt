@@ -95,7 +95,7 @@ object NarpcTestUtils {
             }
         }
 
-        enum class TestEnum{First, Second, Third}
+        enum class TestEnum { First, Second, Third }
 
         abstract class Animal {
             abstract val name: String
@@ -105,6 +105,11 @@ object NarpcTestUtils {
 
         class Bird(override val name: String, val wings: Int) : Animal()
 
+
+    }
+
+    interface TestServiceForServerV2 {
+        suspend fun hello(greeting: String, name: String?): String
 
     }
 
@@ -198,13 +203,13 @@ object NarpcTestUtils {
 
         override suspend fun getAnimals(animals: String): Array<TestService.Animal> {
             return animals.split(",").mapNotNull {
-                if (it.first() == 'm'){
+                if (it.first() == 'm') {
                     val legs = it.last().toString().toInt()
-                   TestService.Mammal(it.drop(1).dropLast(1), legs)
-                }else if (it.first() == 'b'){
+                    TestService.Mammal(it.drop(1).dropLast(1), legs)
+                } else if (it.first() == 'b') {
                     val wings = it.last().toString().toInt()
-                   TestService.Bird(it.drop(1).dropLast(1), wings)
-                }else{
+                    TestService.Bird(it.drop(1).dropLast(1), wings)
+                } else {
                     null
                 }
             }.toTypedArray()
@@ -213,6 +218,14 @@ object NarpcTestUtils {
         override suspend fun getUsername(): String? {
             return call.principal<AuthorizedClientData>()?.name
         }
+    }
+
+    class ServerV2 : TestServiceForServerV2 {
+        override suspend fun hello(greeting: String, name: String?): String {
+            println("greeting = [${greeting}], name = [${name}]")
+            return greetingResponse("$greeting $name")
+        }
+
     }
 
 

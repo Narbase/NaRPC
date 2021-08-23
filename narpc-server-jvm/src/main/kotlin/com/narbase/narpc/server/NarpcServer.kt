@@ -26,15 +26,24 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
     suspend fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
-        val returnType = method.genericReturnType
-        val results = requestDto.args.mapIndexed { index, any ->
+        val args = if (requestDto.args.size > method.parameterCount)
+            requestDto.args.sliceArray(0 until method.parameterCount)
+        else requestDto.args
+        val results = args.mapIndexed { index, any ->
             deserializeArgument(typesList, index, any)
 //            gson.fromJson(any, type)
         }.toTypedArray()
 
         return try {
 //            val result = returnType.javaClass.cast(method.invoke(service, *results))
-            val result = method.invoke(service, *results)
+            val nullArraySize = method.parameterCount - results.size
+
+            val result = when {
+                nullArraySize > 0 -> method.invoke(service, *results, *arrayOfNulls<Any>(nullArraySize))
+                nullArraySize < 0 -> method.invoke(service, *(results.sliceArray(0 until method.parameterCount)))
+                else -> method.invoke(service, *results)
+            }
+
             val res = if (result is Deferred<*>) result.await()
             else result
 

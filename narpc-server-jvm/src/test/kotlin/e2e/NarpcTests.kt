@@ -33,6 +33,26 @@ internal class NarpcTests {
         )
 
     }
+    val serviceOutdated: NarpcTestUtils.TestService = NarpcClient.build(
+        "http://localhost:8010/test_v2",
+    ) {
+        headers(
+            mapOf(
+                "Authorization" to "Bearer ${getToken(username)}"
+            )
+        )
+
+    }
+    val serviceWithManyParams: NarpcTestUtils.TestServiceForServerV2 = NarpcClient.build(
+        "http://localhost:8010/test",
+    ) {
+        headers(
+            mapOf(
+                "Authorization" to "Bearer ${getToken(username)}"
+            )
+        )
+
+    }
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
     val DIVISION_BY_ZERO_STATUS = "DIVISION_BY_ZERO_STATUS"
@@ -67,6 +87,28 @@ internal class NarpcTests {
         runBlocking {
             val greeting = "Hello"
             val response = service.hello(greeting)
+            assertTrue {
+                response == NarpcTestUtils.greetingResponse(greeting)
+            }
+        }
+    }
+
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithLessNumberOfParams() {
+        runBlocking {
+            val greeting = "Hello"
+            val response = serviceOutdated.hello(greeting)
+            assertTrue {
+                response == NarpcTestUtils.greetingResponse("$greeting null")
+            }
+        }
+    }
+
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithMoreNumberOfParams() {
+        runBlocking {
+            val greeting = "Hello"
+            val response = serviceWithManyParams.hello(greeting, "whatever")
             assertTrue {
                 response == NarpcTestUtils.greetingResponse(greeting)
             }
