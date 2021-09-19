@@ -1,11 +1,11 @@
 buildscript {
-    ext.kotlin_version = '1.4.10'
-    ext.ktor_version = '1.4.0'
+    ext.kotlin_version = '1.4.32'
+    ext.ktor_version = '1.5.4'
 }
 
 plugins {
-    id 'org.jetbrains.kotlin.jvm' version '1.4.10'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.4.10'
+    id 'org.jetbrains.kotlin.jvm' version '1.4.32'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.4.32'
     id 'java-library'
 }
 
