@@ -10,7 +10,7 @@ allprojects {
         mavenCentral()
     }
     group 'com.narbase.narpc'
-    version '0.1.9'
+    version '0.1.10'
 
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
