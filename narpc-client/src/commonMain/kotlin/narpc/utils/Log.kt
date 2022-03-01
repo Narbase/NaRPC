@@ -9,10 +9,12 @@ package narpc.utils
  * On: 2020/11/09.
  */
 
-const val IS_DEBUG = true
+object NarpcGlobalConfig {
+    const val debugLog = false
+}
 
 fun nlog(msg: Any?) {
-    if (IS_DEBUG) {
+    if (NarpcGlobalConfig.debugLog) {
         printMessage(msg)
     }
 }
@@ -20,6 +22,6 @@ fun nlog(msg: Any?) {
 expect fun printMessage(msg: Any?)
 
 fun Throwable.printDebugStackTrace(){
-    if (IS_DEBUG)
+    if (NarpcGlobalConfig.debugLog)
         printStackTrace()
 }
