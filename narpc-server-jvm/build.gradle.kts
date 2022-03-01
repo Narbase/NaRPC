@@ -46,6 +46,10 @@ val javadocJar: TaskProvider<Jar> by tasks.registering(Jar::class) {
     from(dokkaHtml.outputDirectory)
 }
 
+java {
+    withSourcesJar()
+}
+
 dependencies {
     api(project(":narpc-common"))
     implementation(platform("org.jetbrains.kotlin:kotlin-bom")) // Align versions of all Kotlin components
