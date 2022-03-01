@@ -10,7 +10,7 @@ plugins {
 
 allprojects {
     group = "com.narbase.narpc"
-    version = "0.1.11"
+    version = "0.1.12"
 }
 
 /*   task sourcesJar(type: Jar, dependsOn: classes) {
