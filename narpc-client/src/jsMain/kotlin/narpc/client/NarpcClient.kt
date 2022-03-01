@@ -21,10 +21,13 @@ actual object NarpcClient {
                 nlog("Inside get $prop\n")
                 val pr = Proxy({}, json {
 
-                    val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any>) -> Any =
+                    nlog("Inside second proxy\n")
+                    val callAsyncApplyFun: (target: dynamic, thisArgs: dynamic, args: Array<Any?>) -> Any =
                         { target, thisArgs, args ->
 
+                            nlog("Inside callAsyncApplyFun.\n")
                             val narpcJsClient = NarpcJsClient()
+//                            nlog("Inside callAsyncApplyFun. target: $target, thisArgs: $thisArgs, args : $args \n")
 
                             val p = GlobalScope.async {
                                 val dto = makeCall(endpoint, prop, args, block, narpcJsClient)
@@ -64,7 +67,7 @@ actual object NarpcClient {
     suspend fun makeCall(
         endpoint: String,
         methodName: String,
-        args: Array<Any>,
+        args: Array<Any?>,
         block: NarpcClientRequestBuilder.()-> Unit,
         narpcJsClient: NarpcJsClient
     ): Any {

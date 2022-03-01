@@ -9,6 +9,8 @@ import io.ktor.http.*
 import io.ktor.http.content.*
 import io.ktor.request.*
 import io.ktor.response.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.nio.charset.Charset
 import kotlin.reflect.KMutableProperty
 import kotlin.reflect.full.memberProperties
@@ -96,9 +98,13 @@ class NarpcKtorHandler<C : Any>(private val narpcServer: NarpcServer<C>) {
 
         val contentType = request.contentType()
         val suitableCharset = contentType.charset() ?: contentType.defaultCharset()
-        return receiveStream().bufferedReader(charset = suitableCharset).readText()
+        return withContext(Dispatchers.IO) {
+            receiveStream().bufferedReader(charset = suitableCharset).readText()
+        }
+
     }
 
     open class InvalidRequestException(message: String = "") : Exception(message)
+    open class InvalidNarpcServiceClassException(message: String = "") : Exception(message)
 
 }

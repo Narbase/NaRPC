@@ -37,7 +37,7 @@ class NarpcProxyListener<T : Any>(
     val block: NarpcClientRequestBuilder.() -> Unit,
     val narpcKtorClient: NarpcKtorClient
 ) : InvocationHandler {
-    override fun invoke(proxy: Any, method: Method, args: Array<Any>): Any {
+    override fun invoke(proxy: Any, method: Method, args: Array<Any?>): Any {
         return runBlocking {
             val result = makeCall(method, service, args)
             result
@@ -45,7 +45,7 @@ class NarpcProxyListener<T : Any>(
 
     }
 
-    private suspend fun makeCall(method: Method, service: KClass<T>, args: Array<Any>): Any {
+    private suspend fun makeCall(method: Method, service: KClass<T>, args: Array<Any?>): Any {
         var result: Any = Unit
         val methodName = method.name
         val myMethod = service.members.first { it.name == methodName }//We mustn't repeat methodNames

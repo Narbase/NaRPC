@@ -6,9 +6,11 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.promise
 import narpc.client.NarpcClient
+import narpc.client.NarpcClientRequestBuilder
 import narpc.client.headers
+import narpc.exceptions.InvalidRequestException
 import narpc.exceptions.NarpcException
-import narpc.exceptions.ServerException
+import narpc.exceptions.UnauthenticatedException
 import narpc.exceptions.UnknownErrorException
 import narpc.utils.nlog
 import kotlin.test.Test
@@ -21,17 +23,23 @@ import kotlin.test.assertTrue
  * Before running these tests. run the main function in narpc-serer-jvm test Main.kt to allow the testing server to run
  */
 internal class NarpcTests {
-    val service: NarpcTestUtils.TestService = NarpcClient.build(
-        "http://localhost:8010/test",
-    ) {
+    private val token =
+        "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+
+    private val clientConfig: NarpcClientRequestBuilder.() -> Unit = {
         headers(
             mapOf(
-                "Authorization" to "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJqd3QtYXVkaWVuY2UiLCJpc3MiOiJodHRwczovL2p3dC1wcm92aWRlci1kb21haW4vIiwibmFtZSI6InRlc3RfdXNlciJ9.K8xaC12VQrg8k3jwDAhMihbc98oPBmqrpEQ0oFSN4Cc"
+                "Authorization" to "Bearer $token"
             )
         )
-
-
     }
+
+    val service: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test", clientConfig)
+    val serviceOutdated: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test_v2", clientConfig)
+    val serviceWithManyParams: NarpcTestUtils.TestServiceForServerV2 = NarpcClient.build(
+        "http://localhost:8010/test",
+        clientConfig
+    )
     val unauthenticatedService: NarpcTestUtils.TestService = NarpcClient.build("http://localhost:8010/test")
 
 
@@ -62,6 +70,23 @@ internal class NarpcTests {
         }
     }
 
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithLessNumberOfParams() = GlobalScope.promise {
+        val greeting = "Hello"
+        val response = serviceOutdated.hello(greeting).await()
+        assertTrue {
+            response.equals(NarpcTestUtils.greetingResponse("$greeting null"), true)
+        }
+    }
+
+    @Test
+    fun remoteCall_shouldWork_whenCalledWithMoreNumberOfParams() = GlobalScope.promise {
+        val greeting = "Hello"
+        val response = serviceWithManyParams.hello(greeting, 42).await()
+        assertTrue {
+            response == NarpcTestUtils.greetingResponse(greeting)
+        }
+    }
 
     @Test
     fun narpc_shouldSupport_sendingAndReceivingComplexItems() = GlobalScope.promise {
@@ -98,7 +123,7 @@ internal class NarpcTests {
         }
     }
 
-    //        Todo: figure out how to handle creating client side files for testing
+//        Todo: figure out how to handle creating client side files for testing
 /*
     @Test
     fun fileSend_shouldReturnTrue_whenCalledWithAValidFile() = GlobalScope.promise {
@@ -143,12 +168,11 @@ internal class NarpcTests {
     @Test
     fun unauthenticatedService_shouldGet401ServerException_whenHelloIsSent() = GlobalScope.promise {
         val greeting = "Hello"
-        assertFailsWith(ServerException::class) {
+        assertFailsWith(UnauthenticatedException::class) {
             try {
                 unauthenticatedService.hello(greeting).await()
-            } catch (e: ServerException) {
-                nlog("did catch a  server exception! What is wrong with you js!!")
-                assertTrue { e.httpStatus == 401 }
+            } catch (e: UnauthenticatedException) {
+                nlog("did catch an Unauthenticated exception! What is wrong with you js!!")
                 throw e
             }
         }
@@ -161,12 +185,11 @@ internal class NarpcTests {
 
     @Test
     fun unhandledServiceServerSide_shouldGet404ServerException_whenAnyOfItsFunctionsAreCalled() = GlobalScope.promise {
-        assertFailsWith(ServerException::class) {
+        assertFailsWith(InvalidRequestException::class) {
             try {
                 val client = NarpcClient.build<PointlessInterface>("http://localhost:8010/nonexisitingpath")
                 client.doSomething(2).await()
-            } catch (e: ServerException) {
-                assertTrue { e.httpStatus == 404 }
+            } catch (e: InvalidRequestException) {
                 throw e
             }
         }
@@ -196,11 +219,11 @@ internal class NarpcTests {
 
     @Test
     fun exceptionInExceptionsMap_shouldBeReceived_whenItIsThrownServerSide() = GlobalScope.promise {
-        assertFailsWith(NarpcException::class) {
+        assertFailsWith(NarpcTestUtils.ExceptionMapExampleException::class) {
             val exceptionMessage = "agprejgiwogpw"
             try {
                 service.throwExceptionMapExampleException(exceptionMessage).await()
-            } catch (e: NarpcException) {
+            } catch (e: NarpcTestUtils.ExceptionMapExampleException) {
                 assertTrue { e.status == NarpcTestUtils.EXCEPTION_MAP_EXAMPLE_EXCEPTION_STATUS }
                 assertTrue { e.message == exceptionMessage }
                 throw e
@@ -220,7 +243,8 @@ internal class NarpcTests {
         }
     }
 
-    @Test
+    //    @Test
+//   Not supported
     fun testEnum_ShouldBeReturned_whenGetFirstEnumIsCalled() = GlobalScope.promise {
         val enum = service.getFirstEnum().await()
         assertEquals(enum, NarpcTestUtils.TestService.TestEnum.First)
@@ -236,7 +260,8 @@ internal class NarpcTests {
         assertTrue { valueOfTest == NarpcTestUtils.TestService.TestEnum.First }
     }
 
-    @Test
+    //    @Test
+//   Not supported
     fun subTypes_ShouldBeParsedCorrectly_whenServerReturnsAListOfBaseType() = GlobalScope.promise {
         val animals = service.getAnimals("mLion4,bEagle2,mHuman2").await()
         assertTrue { animals.size == 3 }

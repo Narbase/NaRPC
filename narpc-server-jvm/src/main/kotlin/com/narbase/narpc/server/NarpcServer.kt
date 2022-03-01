@@ -11,13 +11,13 @@ import java.lang.reflect.ParameterizedType
 import java.nio.file.Files
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.CoroutineContext
-import kotlin.reflect.full.declaredMemberFunctions
 
 
 @Suppress("FunctionName")
 inline fun <reified C : Any> NarpcServer(service: C) = NarpcServer(service, service::class.java)
 
 class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
+
     var gson = Gson()
 
 //    val format = Json { this.serializersModule = module }
@@ -26,15 +26,24 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
     suspend fun process(requestDto: NarpcServerRequestDto): NarpcResponseDto {
         val method = getMethod(requestDto.functionName)
         val typesList = method.parameterTypes
-        val returnType = method.genericReturnType
-        val results = requestDto.args.mapIndexed { index, any ->
+        val args = if (requestDto.args.size > method.parameterCount)
+            requestDto.args.sliceArray(0 until method.parameterCount)
+        else requestDto.args
+        val results = args.mapIndexed { index, any ->
             deserializeArgument(typesList, index, any)
 //            gson.fromJson(any, type)
         }.toTypedArray()
 
         return try {
 //            val result = returnType.javaClass.cast(method.invoke(service, *results))
-            val result = method.invoke(service, *results)
+            val nullArraySize = method.parameterCount - results.size
+
+            val result = when {
+                nullArraySize > 0 -> method.invoke(service, *results, *arrayOfNulls<Any>(nullArraySize))
+                nullArraySize < 0 -> method.invoke(service, *(results.sliceArray(0 until method.parameterCount)))
+                else -> method.invoke(service, *results)
+            }
+
             val res = if (result is Deferred<*>) result.await()
             else result
 
@@ -67,7 +76,12 @@ class NarpcServer<C>(val service: C, private val serviceClass: Class<out C>) {
         return if (type.name == "kotlin.coroutines.Continuation") {
             createContinuation()
         } else {
-            gson.fromJson(any, type)
+            try {
+                gson.fromJson(any, type)
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
         }
     }
 

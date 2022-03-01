@@ -81,6 +81,12 @@ object NarpcTestUtils {
 
     }
 
+    interface TestServiceForServerV2 {
+        @JsName("hello")
+        suspend fun hello(greeting: String, age: Int?): Deferred<String>
+
+    }
+
     fun greetingResponse(greeting: String) = "$greeting to you too"
 
 }

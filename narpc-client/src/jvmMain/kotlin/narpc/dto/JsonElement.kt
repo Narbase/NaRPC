@@ -8,6 +8,6 @@ actual class NarpcResponseDto(
     val message: String = ""
 )
 
-actual class NarpcClientRequestDto(val functionName: String, val args: Array<Any>)
+actual class NarpcClientRequestDto(val functionName: String, val args: Array<Any?>)
 //actual class NarpcServerRequestDto(val functionName: String, val args: List<JsonElement>)
 //

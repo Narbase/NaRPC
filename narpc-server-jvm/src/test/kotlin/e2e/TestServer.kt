@@ -75,6 +75,9 @@ object TestServer {
                 post("/test") {
                     NarpcKtorHandler(NarpcServer(NarpcTestUtils.RemoteTestService())).handle(call)
                 }
+                post("/test_v2") {
+                    NarpcKtorHandler(NarpcServer(NarpcTestUtils.ServerV2())).handle(call)
+                }
             }
         }
     }
