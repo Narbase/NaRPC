@@ -18,6 +18,7 @@ plugins {
     id("org.jetbrains.dokka")
     id("org.jetbrains.kotlin.plugin.serialization")
     `maven-publish`
+    `java-library`
     signing
 }
 //group = "com.narbase.narpc"
@@ -62,52 +63,58 @@ dependencies {
 
 afterEvaluate {
     publishing {
-        publications.withType<MavenPublication> {
-            artifact(javadocJar.get())
-            pom {
-                val projectGitUrl = "https://github.com/Narbase/NaRPC"
-                name.set("NaRPC")
-                description.set("Remote Procedure Call in Kotlin")
-                url.set(projectGitUrl)
-                inceptionYear.set("2021")
-                licenses {
-                    license {
-                        name.set("MIT")
-                        url.set("https://opensource.org/licenses/MIT")
-                    }
-                }
-                developers {
-                    developer {
-                        id.set("islam")
-                        name.set("Islam Abdalla")
-                        email.set("islam@narbase.com")
-                        organization.set("Narbase Technologies")
-                    }
-                    developer {
-                        id.set("hind")
-                        name.set("Hind Abulmaali")
-                        email.set("hind@narbase.com")
-                        organization.set("Narbase Technologies")
-                    }
-                    developer {
-                        id.set("ayman")
-                        name.set("Ayman Hassan")
-                        email.set("ayman.hassan@narbase.com")
-                        organization.set("Narbase Technologies")
-                    }
-                }
-                issueManagement {
-                    system.set("GitHub")
-                    url.set("$projectGitUrl/issues")
-                }
-                scm {
-                    connection.set("scm:git:$projectGitUrl")
-                    developerConnection.set("scm:git:$projectGitUrl")
+        publications {
+            create<MavenPublication>("library") {
+                from(components["java"])
+
+                artifact(javadocJar.get())
+                pom {
+                    val projectGitUrl = "https://github.com/Narbase/NaRPC"
+                    name.set("NaRPC")
+                    description.set("Remote Procedure Call in Kotlin")
                     url.set(projectGitUrl)
+                    inceptionYear.set("2021")
+                    licenses {
+                        license {
+                            name.set("MIT")
+                            url.set("https://opensource.org/licenses/MIT")
+                        }
+                    }
+                    developers {
+                        developer {
+                            id.set("islam")
+                            name.set("Islam Abdalla")
+                            email.set("islam@narbase.com")
+                            organization.set("Narbase Technologies")
+                        }
+                        developer {
+                            id.set("hind")
+                            name.set("Hind Abulmaali")
+                            email.set("hind@narbase.com")
+                            organization.set("Narbase Technologies")
+                        }
+                        developer {
+                            id.set("ayman")
+                            name.set("Ayman Hassan")
+                            email.set("ayman.hassan@narbase.com")
+                            organization.set("Narbase Technologies")
+                        }
+                    }
+                    issueManagement {
+                        system.set("GitHub")
+                        url.set("$projectGitUrl/issues")
+                    }
+                    scm {
+                        connection.set("scm:git:$projectGitUrl")
+                        developerConnection.set("scm:git:$projectGitUrl")
+                        url.set(projectGitUrl)
+                    }
                 }
+                the<SigningExtension>().sign(this)
+
             }
-            the<SigningExtension>().sign(this)
         }
+
         repositories {
             maven {
                 name = "sonatypeStaging"
